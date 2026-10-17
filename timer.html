@@ -1,0 +1,454 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>OSCE 学習会タイマー</title>
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+      font-family: 'Helvetica Neue', Arial, sans-serif;
+      height: 100dvh;
+      background-color: #f8f9fa;
+      overflow: hidden;
+      user-select: none;
+      -webkit-user-select: none;
+    }
+    
+    /* --- 画面①：シナリオ選択画面 --- */
+    #setup-screen {
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      height: 100%;
+      padding: 20px;
+      text-align: center;
+      box-sizing: border-box;
+    }
+    #setup-screen h1 { font-size: 1.5rem; color: #333; margin-bottom: 30px; }
+    .select-box {
+      width: 100%;
+      max-width: 320px;
+      padding: 15px;
+      font-size: 1.1rem;
+      border-radius: 10px;
+      border: 2px solid #0066cc;
+      margin-bottom: 30px;
+      background-color: #fff;
+    }
+    .btn-next {
+      background-color: #0066cc;
+      color: #fff;
+      font-size: 1.2rem;
+      font-weight: bold;
+      padding: 15px 40px;
+      border: none;
+      border-radius: 30px;
+      cursor: pointer;
+      box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+    }
+    .btn-next:active { transform: translateY(2px); }
+    
+    /* --- 画面②：タイマー画面 --- */
+    #app-screen {
+      display: none;
+      flex-direction: column;
+      height: 100dvh;
+    }
+    #timer-section {
+      position: relative;
+      flex: 0 0 auto;
+      padding: 30px 0 15px 0;
+      background-color: #000;
+      color: #fff;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+      z-index: 10;
+    }
+    .btn-back {
+      position: absolute;
+      top: 15px;
+      left: 15px;
+      background-color: transparent;
+      color: #aaa;
+      border: 1px solid #555;
+      padding: 5px 12px;
+      font-size: 0.85rem;
+      border-radius: 15px;
+      cursor: pointer;
+    }
+    #timer-display {
+      font-size: 22vw;
+      font-weight: bold;
+      font-variant-numeric: tabular-nums;
+      line-height: 1;
+      transition: color 0.3s ease;
+      margin-bottom: 12px;
+    }
+    
+    #controls {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: 10px;
+    }
+    #controls button {
+      font-size: 1.1rem;
+      padding: 12px 20px;
+      margin: 0 6px;
+      border: none;
+      border-radius: 30px;
+      font-weight: bold;
+      color: #fff;
+      cursor: pointer;
+    }
+    .btn-start { background-color: #28a745; width: 130px; }
+    .btn-seek { background-color: #444; font-size: 1.3rem !important; padding: 10px 20px !important; }
+    .btn-seek:active { background-color: #666; }
+    .btn-reset { background-color: #dc3545; font-size: 0.9rem; padding: 8px 20px; border: none; border-radius: 20px; color: #fff; font-weight: bold; cursor: pointer; }
+    .btn-disabled { background-color: #6c757d !important; opacity: 0.7; }
+    
+    /* 下半分：案内テキストエリア */
+    #text-section {
+      flex: 1;
+      background-color: #f8f9fa;
+      color: #333;
+      padding: 15px 20px;
+      overflow-y: auto;
+      font-size: 14px;
+    }
+    .header-text {
+      font-weight: bold;
+      margin-bottom: 10px;
+      border-bottom: 2px solid #ccc;
+      padding-bottom: 10px;
+      line-height: 1.5;
+    }
+    .instruction-block {
+      margin-bottom: 10px;
+      padding: 12px;
+      background-color: #fff;
+      border-radius: 8px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+      transition: all 0.3s ease;
+      opacity: 0.5;
+      cursor: pointer;
+    }
+    .instruction-block:active { transform: scale(0.98); background-color: #f0f0f0; }
+    .active-block {
+      opacity: 1;
+      background-color: #e6f7ff !important;
+      border-left: 6px solid #0066cc;
+    }
+    .block-title {
+      font-weight: bold;
+      font-size: 1.05em;
+      margin-bottom: 6px;
+      display: flex;
+      justify-content: space-between;
+      color: #0066cc;
+    }
+    ul { margin: 5px 0 0 0; padding-left: 20px; }
+    li { margin-bottom: 3px; }
+  </style>
+</head>
+<body>
+
+  <!-- 音声ファイル読み込み -->
+  <audio id="audio-start" src="start.mp3" preload="auto"></audio>
+  <audio id="audio-10min" src="10min.mp3" preload="auto"></audio>
+  <audio id="audio-12min" src="12min.mp3" preload="auto"></audio>
+
+  <!-- 画面①：シナリオ選択 -->
+  <div id="setup-screen">
+    <h1>OSCE 学習会タイマー</h1>
+    <select id="scenario-select" class="select-box">
+      <option value="default">デフォルト（汎用シナリオ）</option>
+      <option value="scenario1">シナリオ①：発熱（8か月 女児）</option>
+    </select>
+    <button type="button" class="btn-next" onclick="goToTimer()">タイマー画面へ</button>
+  </div>
+
+  <!-- 画面②：タイマー実行画面 -->
+  <div id="app-screen">
+    <div id="timer-section">
+      <button type="button" class="btn-back" onclick="goBack()">◀ 戻る</button>
+      <div id="timer-display">00:00</div>
+      
+      <div id="controls">
+        <button type="button" class="btn-seek" id="rewindBtn">⏪</button>
+        <button type="button" class="btn-start" id="startBtn" onclick="toggleTimer()">スタート</button>
+        <button type="button" class="btn-seek" id="ffBtn">⏩</button>
+      </div>
+      <div>
+        <button type="button" class="btn-reset" onclick="resetTimer()">リセット</button>
+      </div>
+    </div>
+    
+    <div id="text-section">
+      <div class="header-text">
+        ・ここは初診外来です。<br>
+        　患者: <span id="p-name">○○ ○○</span> さん（<span id="p-age">○○歳</span> <span id="p-gender">男性/女性</span>）<br>
+        　<span id="p-memo" style="font-size: 0.9em; color: #d84315;"></span>
+      </div>
+      
+      <!-- 0分ジャンプ -->
+      <div id="phase1" class="instruction-block active-block" onclick="jumpTo(0)">
+        <div class="block-title"><span>医療面接と身体診察</span><span>12分</span></div>
+        <div style="font-size: 0.9em;">身体診察では何の診察をしているか、具体的な所見を述べながら行ってください。</div>
+      </div>
+      
+      <!-- 11:53ジャンプ -->
+      <div id="phase2" class="instruction-block" onclick="jumpTo(12)">
+        <div class="block-title"><span>情報整理と指導医への報告</span><span>4分</span></div>
+        <div style="font-size: 0.9em;">以下の点を含めて報告してください。<ul><li>患者から得た情報</li><li>鑑別すべき疾患・疾患とその根拠</li></ul></div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const scenarios = {
+      "default": { name: "○○ ○○", age: "○○歳", gender: "男性/女性", memo: "" },
+      "scenario1": { name: "田中 乃愛", age: "8か月", gender: "女児", memo: "主訴：発熱（保護者=父親が病歴を説明）" }
+    };
+
+    let timerInterval = null;
+    let seekInterval = null;
+    let seekTicks = 0;
+    let elapsedSeconds = 0;
+    let isRunning = false;
+    let isAudioUnlocked = false;
+
+    const display = document.getElementById('timer-display');
+    const startBtn = document.getElementById('startBtn');
+    const phase1Block = document.getElementById('phase1');
+    const phase2Block = document.getElementById('phase2');
+    
+    const aStart = document.getElementById('audio-start');
+    const a10 = document.getElementById('audio-10min');
+    const a12 = document.getElementById('audio-12min');
+
+    const TRIG_10MIN = 9 * 60 + 58;   // 09:58
+    const TRIG_12MIN = 11 * 60 + 53;  // 11:53
+    const PHASE2_START_SEC = 12 * 60; // 12:00
+    const TOTAL_SEC = 16 * 60;        // 16:00
+
+    function unlockAudio() {
+      if (isAudioUnlocked) return;
+      [aStart, a10, a12].forEach(audio => {
+        audio.muted = true;
+        audio.play().then(() => {
+          audio.pause();
+          audio.currentTime = 0;
+          audio.muted = false;
+        }).catch(() => {
+          audio.muted = false;
+        });
+      });
+      isAudioUnlocked = true;
+    }
+
+    function stopAllAudio() {
+      [aStart, a10, a12].forEach(audio => {
+        audio.pause();
+        audio.currentTime = 0;
+      });
+    }
+
+    function goToTimer() {
+      const selectedId = document.getElementById('scenario-select').value;
+      const data = scenarios[selectedId] || scenarios["default"];
+      document.getElementById('p-name').textContent = data.name;
+      document.getElementById('p-age').textContent = data.age;
+      document.getElementById('p-gender').textContent = data.gender;
+      document.getElementById('p-memo').textContent = data.memo;
+      
+      document.getElementById('setup-screen').style.display = 'none';
+      document.getElementById('app-screen').style.display = 'flex';
+      unlockAudio();
+    }
+
+    function goBack() {
+      resetTimer();
+      document.getElementById('app-screen').style.display = 'none';
+      document.getElementById('setup-screen').style.display = 'flex';
+    }
+
+    let audioCtx = null;
+    function playEndChime() {
+      try {
+        if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        if (audioCtx.state === 'suspended') audioCtx.resume();
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(880, audioCtx.currentTime);
+        gain.gain.setValueAtTime(0.8, audioCtx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 2.5);
+        osc.start(audioCtx.currentTime);
+        osc.stop(audioCtx.currentTime + 2.5);
+      } catch(e) {}
+    }
+
+    function formatTime(totalSec) {
+      const m = Math.floor(totalSec / 60).toString().padStart(2, '0');
+      const s = (totalSec % 60).toString().padStart(2, '0');
+      return `${m}:${s}`;
+    }
+
+    function updateDisplay(skipAudio = false) {
+      display.textContent = formatTime(elapsedSeconds);
+      
+      if (!skipAudio) {
+        if (elapsedSeconds === TRIG_10MIN) {
+          a10.currentTime = 0;
+          a10.play().catch(()=>{});
+        } else if (elapsedSeconds === TRIG_12MIN) {
+          a12.currentTime = 0;
+          a12.play().catch(()=>{});
+        }
+      }
+
+      if (elapsedSeconds >= PHASE2_START_SEC && elapsedSeconds < TOTAL_SEC) {
+        if (elapsedSeconds === PHASE2_START_SEC && !skipAudio) {
+          phase2Block.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+        phase1Block.classList.remove('active-block');
+        phase2Block.classList.add('active-block');
+        display.style.color = '#ffeb3b';
+      } else if (elapsedSeconds >= TOTAL_SEC) {
+        if (elapsedSeconds === TOTAL_SEC && !skipAudio) playEndChime();
+        display.style.color = '#f44336';
+      } else {
+        phase1Block.classList.add('active-block');
+        phase2Block.classList.remove('active-block');
+        display.style.color = '#ffffff';
+      }
+    }
+
+    function startSeek(delta) {
+      stopSeek();
+      seekTicks = 0;
+      elapsedSeconds = Math.max(0, Math.min(TOTAL_SEC, elapsedSeconds + delta));
+      updateDisplay(true);
+
+      seekInterval = setInterval(() => {
+        seekTicks++;
+        let step = delta;
+        if (seekTicks > 15) step = delta * 15;
+        else if (seekTicks > 6) step = delta * 5;
+        
+        elapsedSeconds = Math.max(0, Math.min(TOTAL_SEC, elapsedSeconds + step));
+        updateDisplay(true);
+      }, 80);
+    }
+
+    function stopSeek() {
+      if (seekInterval) {
+        clearInterval(seekInterval);
+        seekInterval = null;
+      }
+    }
+
+    function bindSeekButton(btnId, delta) {
+      const btn = document.getElementById(btnId);
+      btn.addEventListener('touchstart', (e) => { e.preventDefault(); startSeek(delta); }, { passive: false });
+      btn.addEventListener('touchend', stopSeek);
+      btn.addEventListener('touchcancel', stopSeek);
+      btn.addEventListener('mousedown', () => startSeek(delta));
+      btn.addEventListener('mouseup', stopSeek);
+      btn.addEventListener('mouseleave', stopSeek);
+    }
+    bindSeekButton('rewindBtn', -1);
+    bindSeekButton('ffBtn', 1);
+
+    function jumpTo(phase) {
+      unlockAudio();
+      stopAllAudio();
+      clearInterval(timerInterval);
+
+      if (phase === 0) {
+        elapsedSeconds = 0;
+        updateDisplay(true);
+        if (isRunning) startCounting();
+      } else if (phase === 12) {
+        elapsedSeconds = TRIG_12MIN;
+        updateDisplay(false);
+        if (!isRunning) {
+          isRunning = true;
+        }
+        startCounting();
+      }
+    }
+
+    function startCounting() {
+      clearInterval(timerInterval);
+      timerInterval = setInterval(() => {
+        elapsedSeconds++;
+        updateDisplay(false);
+        if (elapsedSeconds >= TOTAL_Sem) { // 修正済み
+          clearInterval(timerInterval);
+          isRunning = false;
+          startBtn.textContent = '終了';
+          startBtn.classList.add('btn-disabled');
+          startBtn.disabled = true;
+        }
+      }, 1000);
+      startBtn.textContent = '一時停止';
+      startBtn.style.backgroundColor = '#ff9800';
+      startBtn.disabled = false;
+      startBtn.classList.remove('btn-disabled');
+    }
+
+    function toggleTimer() {
+      unlockAudio();
+      if (isRunning) {
+        clearInterval(timerInterval);
+        stopAllAudio();
+        startBtn.textContent = '再開';
+        startBtn.style.backgroundColor = '#007bff';
+        isRunning = false;
+      } else {
+        if (elapsedSeconds >= TOTAL_SEC) return;
+        isRunning = true;
+        
+        if (elapsedSeconds === 0) {
+          startBtn.textContent = '準備中...';
+          startBtn.classList.add('btn-disabled');
+          startBtn.disabled = true;
+          
+          aStart.currentTime = 0;
+          aStart.onended = () => {
+            if (isRunning) startCounting();
+          };
+          aStart.play().catch(() => {
+            startCounting();
+          });
+        } else {
+          startCounting();
+        }
+      }
+    }
+
+    function resetTimer() {
+      clearInterval(timerInterval);
+      stopAllAudio();
+      isRunning = false;
+      elapsedSeconds = 0;
+      updateDisplay(true);
+      startBtn.textContent = 'スタート';
+      startBtn.disabled = false;
+      startBtn.classList.remove('btn-disabled');
+      startBtn.style.backgroundColor = '#28a745';
+      document.getElementById('text-section').scrollTop = 0;
+    }
+  </script>
+</body>
+</html>
