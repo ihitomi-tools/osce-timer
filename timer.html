@@ -413,6 +413,25 @@
       body[data-mode="exam"][data-stage="run"]:has(#task-mini.has-info) #timer-section { padding-top: calc(84px + env(safe-area-inset-top)); }
       body[data-mode="exam"][data-stage="run"]:has(#task-mini.has-info) #timer-display { font-size: min(30vw, 42vh); }
     }
+    /* 学習会仕様：「課題文」を大きく見せるか、「タイマー」を大きく見せるかの切り替え */
+    #btn-view {
+      display: none; position: absolute; z-index: 5;
+      top: calc(12px + env(safe-area-inset-top)); right: calc(12px + env(safe-area-inset-right));
+      padding: 3px; font-size: 0.8rem; color: #aaa; background: transparent; border: 1px solid #555; border-radius: 15px;
+    }
+    #btn-view span { display: inline-block; padding: 3px 10px; border-radius: 12px; transition: background 0.2s ease, color 0.2s ease; }
+    body[data-mode="study"][data-view="text"] #btn-view span:first-child,
+    body[data-mode="study"][data-view="timer"] #btn-view span:last-child { color: #fff; background: var(--accent); font-weight: 700; }
+    body[data-mode="study"] #btn-view { display: block; }
+    @media (orientation: portrait) { body[data-mode="study"] #timer-section { padding-top: calc(54px + env(safe-area-inset-top)); } }
+    body[data-mode="study"][data-view="text"] #timer-display { font-size: min(20vw, 13vh); }
+    body[data-mode="study"][data-view="timer"] #timer-display { font-size: min(32vw, 26vh); }
+    @media (orientation: landscape) and (min-width: 640px) {
+      body[data-mode="study"][data-view="text"] #app { grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr); }
+      body[data-mode="study"][data-view="timer"] #app { grid-template-columns: minmax(0, 0.8fr) minmax(0, 1.5fr); }
+      body[data-mode="study"][data-view="text"] #timer-display { font-size: min(11vw, 34vh); }
+      body[data-mode="study"][data-view="timer"] #timer-display { font-size: min(21vw, 50vh); }
+    }
     body[data-phase="warn"]     #timer-display { color: var(--timer-warn); }
     body[data-phase="report"]   #timer-display { color: var(--timer-phase2); }
     body[data-phase="finished"] #timer-display { color: var(--timer-end); }
@@ -612,6 +631,7 @@
 
     <section id="timer-section">
       <button type="button" class="btn-back" id="btn-back">◀ 戻る</button>
+      <button type="button" id="btn-view" aria-label="課題文とタイマー、どちらを大きく見せるか切り替える"><span>課題文</span><span>タイマー</span></button>
       <div id="awake-badge" aria-live="off"></div>
       <div id="read-caption">課題文を読む時間</div>
       <div id="timer-display" aria-live="off">00:00</div>
@@ -1140,8 +1160,13 @@
     function fitTask() {
       const p = $('task-panel');
       p.style.fontSize = '';
-      if (state.mode !== 'exam') return;
       if (getComputedStyle(p).display === 'none') return;
+      if (state.mode === 'study') {   // 学習会仕様：課題文の全文が、スクロールなしで収まる大きさまで小さくする
+        let fs = parseFloat(getComputedStyle(p).fontSize);
+        while (p.scrollHeight > p.clientHeight + 1 && fs > 10) { fs -= 0.5; p.style.fontSize = fs + 'px'; }
+        return;
+      }
+      if (state.mode !== 'exam') return;
       // 読む時間：画面いっぱいに収まる最大の大きさまで、課題文を大きくする
       if (document.body.dataset.stage === 'read') {
         let size = 12;
@@ -1158,6 +1183,7 @@
       while (p.scrollHeight > p.clientHeight + 1 && fs > 9) { fs -= 0.5; p.style.fontSize = fs + 'px'; }
     }
     window.addEventListener('resize', fitTask);
+    if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => fitTask());
 
     // 試験仕様：課題文を隅に小さく残し、タップで数秒だけ大きく見せる
     const peek = {
@@ -1534,7 +1560,7 @@
                     : src === 'pptx' && /^s\d+$/.test(v) ? session.scenarios[Number(v.slice(1))] || null
                     : null;
       document.body.dataset.mode = mode;
-      store.set('osce.prefs', { preset: presetKey, mode, entry, scenario: v, src });
+      store.set('osce.prefs', { preset: presetKey, mode, entry, scenario: v, src, view: document.body.dataset.view || 'text' });
       store.set('osce.manual', manFromFields());
     }
 
@@ -1628,6 +1654,12 @@
         $('m-age').value = manual.age || ''; $('m-sex').value = manual.sex === '男性' ? '男性' : '女性';
       }
       const check = (name, value) => { const r = document.querySelector(`input[name="${name}"][value="${value}"]`); if (r) r.checked = true; };
+      document.body.dataset.view = prefs.view === 'timer' ? 'timer' : 'text';
+      $('btn-view').addEventListener('click', () => {
+        document.body.dataset.view = document.body.dataset.view === 'timer' ? 'text' : 'timer';
+        store.set('osce.prefs', Object.assign(store.get('osce.prefs', {}) || {}, { view: document.body.dataset.view }));
+        fitTask();
+      });
       if (prefs.preset) check('preset', prefs.preset);
       if (prefs.mode) check('mode', prefs.mode);
       if (prefs.entry) check('entry', prefs.entry);

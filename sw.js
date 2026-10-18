@@ -13,7 +13,7 @@
    - ファイルを追加・削除したら、PRECACHE の一覧も直してください。
    ============================================================== */
 
-const VERSION = 'v21';
+const VERSION = 'v22';
 const CACHE_PREFIX = 'osce-timer-';
 const CACHE_NAME = CACHE_PREFIX + VERSION;
 
