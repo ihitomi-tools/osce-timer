@@ -2,453 +2,1258 @@
 <html lang="ja">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <title>OSCE 学習会タイマー</title>
+  <meta name="color-scheme" content="light dark">
+  <meta name="theme-color" content="#000000">
+
+  <!-- ホーム画面に追加したとき（PWA）の設定 -->
+  <link rel="manifest" href="manifest.json">
+  <link rel="icon" type="image/png" href="icon-192.png">
+  <link rel="apple-touch-icon" href="apple-touch-icon.png">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="OSCEタイマー">
+
   <style>
+    /* ============================================================
+       フォント（アプリに同梱。電波がなくても同じ見た目で表示されます）
+       ============================================================ */
+    @font-face {
+      font-family: "BIZ UDGothic";
+      src: url("BIZUDGothic-Regular.woff2") format("woff2");
+      font-weight: 400; font-style: normal; font-display: swap;
+    }
+    @font-face {
+      font-family: "BIZ UDGothic";
+      src: url("BIZUDGothic-Bold.woff2") format("woff2");
+      font-weight: 700; font-style: normal; font-display: swap;
+    }
+
+    /* ============================================================
+       色（ライト／ダークは端末の設定に自動で合わせます）
+       ============================================================ */
+    :root {
+      --font: "BIZ UDGothic", "BIZ UDPGothic", "Hiragino Sans", "Yu Gothic", sans-serif;
+
+      --bg: #f8f9fa;
+      --surface: #ffffff;
+      --surface-pressed: #f0f0f0;
+      --text: #333333;
+      --text-sub: #666666;
+      --line: #cccccc;
+      --accent: #0066cc;
+      --accent-soft: #e6f7ff;
+      --note: #d84315;
+
+      /* タイマー部分は常に黒背景 */
+      --timer-bg: #000000;
+      --timer-text: #ffffff;
+      --timer-phase1: #ffffff;
+      --timer-warn: #ffb300;
+      --timer-phase2: #ffeb3b;
+      --timer-end: #f44336;
+
+      --btn-start: #28a745;
+      --btn-pause: #ff9800;
+      --btn-resume: #007bff;
+      --btn-reset: #dc3545;
+      --btn-seek: #444444;
+      --btn-seek-pressed: #666666;
+      --btn-disabled: #6c757d;
+    }
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg: #121316;
+        --surface: #1d1f24;
+        --surface-pressed: #2a2d34;
+        --text: #e6e8ec;
+        --text-sub: #a0a5ae;
+        --line: #3a3d45;
+        --accent: #5aa9ff;
+        --accent-soft: #14283d;
+        --note: #ff8a65;
+      }
+    }
+
+    /* ============================================================
+       共通
+       ============================================================ */
+    * { box-sizing: border-box; }
+    html, body { height: 100%; }
     body {
       margin: 0;
-      padding: 0;
-      font-family: 'Helvetica Neue', Arial, sans-serif;
-      height: 100dvh;
-      background-color: #f8f9fa;
+      font-family: var(--font);
+      background: var(--bg);
+      color: var(--text);
       overflow: hidden;
       user-select: none;
       -webkit-user-select: none;
+      -webkit-touch-callout: none;
+      -webkit-tap-highlight-color: transparent;
+      touch-action: manipulation;
     }
-    
-    /* --- 画面①：シナリオ選択画面 --- */
+    button, input, select, textarea { font-family: inherit; }
+    button { cursor: pointer; }
+    [hidden] { display: none !important; }
+
+    /* 画面を消さないための、ほぼ見えない小さな動画 */
+    #awake-video {
+      position: fixed; right: 0; bottom: 0;
+      width: 2px; height: 2px; opacity: 0.02;
+      pointer-events: none;
+    }
+
+    /* ============================================================
+       設定画面
+       ============================================================ */
     #setup-screen {
-      display: flex;
-      flex-direction: column;
-      justify-content: center;
-      align-items: center;
       height: 100%;
-      padding: 20px;
-      text-align: center;
-      box-sizing: border-box;
+      overflow-y: auto;
+      padding: calc(24px + env(safe-area-inset-top)) 20px calc(24px + env(safe-area-inset-bottom));
     }
-    #setup-screen h1 { font-size: 1.5rem; color: #333; margin-bottom: 30px; }
-    .select-box {
-      width: 100%;
-      max-width: 320px;
-      padding: 15px;
-      font-size: 1.1rem;
-      border-radius: 10px;
-      border: 2px solid #0066cc;
-      margin-bottom: 30px;
-      background-color: #fff;
+    .setup-inner { max-width: 420px; margin: 0 auto; }
+    #setup-screen h1 { margin: 0 0 22px; font-size: 1.5rem; text-align: center; }
+    .field { margin: 0 0 20px; padding: 0; border: 0; min-width: 0; }
+    .field > legend, .field > .label {
+      display: block; margin: 0 0 8px; padding: 0;
+      font-size: 0.85rem; font-weight: 700; color: var(--text-sub);
     }
+
+    /* 3択・2択のボタン */
+    .seg { display: flex; gap: 8px; }
+    .seg label { flex: 1; min-width: 0; }
+    .seg input { position: absolute; opacity: 0; pointer-events: none; }
+    .seg span {
+      display: block; padding: 12px 6px;
+      text-align: center; font-size: 1rem; font-weight: 700; line-height: 1.3;
+      color: var(--text); background: var(--surface);
+      border: 2px solid var(--line); border-radius: 12px;
+    }
+    .seg small { display: block; margin-top: 2px; font-size: 0.72rem; font-weight: 400; color: var(--text-sub); }
+    .seg input:checked + span { color: var(--accent); background: var(--accent-soft); border-color: var(--accent); }
+    .seg input:checked + span small { color: inherit; }
+    .seg input:focus-visible + span { outline: 3px solid var(--accent); outline-offset: 2px; }
+
+    .select-box, .text-box {
+      width: 100%; padding: 13px 12px;
+      font-size: 1rem; color: var(--text); background: var(--surface);
+      border: 2px solid var(--line); border-radius: 10px;
+    }
+    textarea.text-box { resize: vertical; min-height: 64px; line-height: 1.5; }
+    .select-box:focus, .text-box:focus { outline: none; border-color: var(--accent); }
+
+    .btn-file, .btn-sub {
+      display: inline-block; padding: 10px 16px;
+      font-size: 0.95rem; font-weight: 700; color: var(--accent);
+      background: transparent; border: 2px solid var(--accent); border-radius: 22px;
+    }
+    .btn-file input { display: none; }
+    .btn-sub.is-quiet { color: var(--text-sub); border-color: var(--line); }
+    .row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+    .help { margin: 8px 0 0; font-size: 0.8rem; line-height: 1.6; color: var(--text-sub); }
+    #import-status[data-state="ok"] { color: #28a745; }
+    #import-status[data-state="error"] { color: var(--note); }
+
+    details.manual { margin: 0 0 20px; }
+    details.manual summary { cursor: pointer; font-size: 0.9rem; font-weight: 700; color: var(--text-sub); }
+    details.manual .manual-body { margin-top: 10px; display: grid; gap: 10px; }
+    .chips { display: flex; gap: 6px; flex-wrap: wrap; }
+    .chips button {
+      padding: 5px 12px; font-size: 0.8rem; color: var(--text-sub);
+      background: transparent; border: 1px solid var(--line); border-radius: 14px;
+    }
+
     .btn-next {
-      background-color: #0066cc;
-      color: #fff;
-      font-size: 1.2rem;
-      font-weight: bold;
-      padding: 15px 40px;
-      border: none;
-      border-radius: 30px;
-      cursor: pointer;
-      box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+      display: block; width: 100%; margin-top: 8px; padding: 16px 40px;
+      font-size: 1.2rem; font-weight: 700; color: #fff;
+      background: var(--accent); border: none; border-radius: 30px;
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.15);
     }
     .btn-next:active { transform: translateY(2px); }
-    
-    /* --- 画面②：タイマー画面 --- */
-    #app-screen {
-      display: none;
-      flex-direction: column;
-      height: 100dvh;
+
+    #offline-status { margin: 24px 0 0; font-size: 0.85rem; line-height: 1.6; text-align: center; color: var(--text-sub); }
+    #offline-status[data-state="ready"] { color: #28a745; }
+    #offline-status[data-state="error"] { color: var(--note); }
+    #offline-hint { margin: 6px 0 0; font-size: 0.8rem; line-height: 1.6; text-align: center; color: var(--text-sub); }
+
+    /* ============================================================
+       タイマー画面の骨組み
+       縦長：課題文が上、タイマーが下／横長：左に課題文、右にタイマー
+       ============================================================ */
+    #app { display: none; height: 100%; }
+    #app.is-visible { display: grid; }
+
+    #app {
+      grid-template-columns: minmax(0, 1fr);
+      grid-template-rows: minmax(0, 1fr) auto;
+      grid-template-areas: "task" "timer";
     }
+    #task-panel  { grid-area: task; }
+    #timer-section { grid-area: timer; }
+
+    /* 学習会想定・縦：タイマーが上、文章が下 */
+    body[data-mode="study"] #app {
+      grid-template-rows: auto minmax(0, 1fr);
+      grid-template-areas: "timer" "task";
+    }
+    /* 試験想定・開始後：課題文は隅に小さく、タイマーだけを大きく */
+    body[data-mode="exam"][data-stage="run"] #app {
+      grid-template-rows: minmax(0, 1fr);
+      grid-template-areas: "timer";
+    }
+
+    @media (orientation: landscape) and (min-width: 640px) {
+      #app, body[data-mode="study"] #app {
+        grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr);
+        grid-template-rows: minmax(0, 1fr);
+        grid-template-areas: "task timer";
+      }
+      body[data-mode="exam"][data-stage="run"] #app {
+        grid-template-columns: minmax(0, 1fr);
+        grid-template-areas: "timer";
+      }
+    }
+
+    /* ============================================================
+       課題文
+       ============================================================ */
+    #task-panel {
+      position: relative;
+      overflow-y: auto;
+      padding: calc(18px + env(safe-area-inset-top)) calc(20px + env(safe-area-inset-right)) 18px calc(20px + env(safe-area-inset-left));
+      font-size: clamp(15px, 4.3vw, 22px);
+      line-height: 1.6;
+      color: var(--text);
+      background: var(--bg);
+    }
+    body[data-mode="study"] #task-panel { padding-top: 14px; font-size: clamp(14px, 3.8vw, 20px); }
+    @media (orientation: landscape) and (min-width: 640px) {
+      #task-panel { font-size: clamp(14px, 2.3vw, 24px); padding-top: calc(16px + env(safe-area-inset-top)); }
+      body[data-mode="study"] #task-panel { font-size: clamp(14px, 2.1vw, 22px); }
+    }
+
+    .task-tag {
+      float: right; margin: 0 0 8px 12px; padding: 2px 12px;
+      font-size: 0.8em; font-weight: 700; color: var(--accent);
+      border: 2px solid var(--accent); border-radius: 14px;
+    }
+    .task-tag:empty { display: none; }
+    #task-body p { margin: 0 0 0.5em; }
+    .t-situ { font-weight: 700; }
+    .t-patient { font-weight: 700; }
+    .t-supp { color: var(--note); }
+    .t-note { margin-top: 0.4em !important; font-size: 0.9em; color: var(--text-sub); }
+
+    .instruction-block {
+      margin: 0.8em 0; padding: 0.7em 0.9em;
+      background: var(--surface); border-radius: 10px;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+      border-left: 6px solid var(--line);
+    }
+    .block-title { display: flex; justify-content: space-between; gap: 8px; margin-bottom: 0.3em; font-weight: 700; color: var(--accent); }
+    .block-body { font-size: 0.9em; }
+    .block-body ul { margin: 0.3em 0 0; padding-left: 1.3em; }
+
+    /* 学習会想定：いまの場面が分かるように、他は薄くする。タップでジャンプ */
+    body[data-mode="study"] .instruction-block { opacity: 0.5; cursor: pointer; transition: opacity 0.3s ease, background 0.3s ease; }
+    body[data-mode="study"] .instruction-block:active { transform: scale(0.98); background: var(--surface-pressed); }
+    body[data-mode="study"] .instruction-block.is-active { opacity: 1; background: var(--accent-soft); border-left-color: var(--accent); }
+
+    /* 試験想定・開始後：隅の小さなカード → タップで数秒だけ拡大 */
+    body[data-mode="exam"][data-stage="run"] #task-panel { display: none; }
+    body[data-mode="exam"][data-stage="run"] #task-panel.is-peek {
+      display: block; position: fixed; z-index: 50;
+      inset: calc(10px + env(safe-area-inset-top)) calc(10px + env(safe-area-inset-right)) calc(10px + env(safe-area-inset-bottom)) calc(10px + env(safe-area-inset-left));
+      border-radius: 16px; box-shadow: 0 12px 48px rgba(0, 0, 0, 0.7);
+      animation: pop 0.2s ease-out;
+    }
+    @keyframes pop { from { transform: scale(0.85); opacity: 0; } to { transform: none; opacity: 1; } }
+    .peek-bar { display: none; position: sticky; top: -18px; height: 4px; margin: -18px -20px 12px; background: var(--accent); transform-origin: left; z-index: 2; }
+    #task-panel.is-peek .peek-bar { display: block; animation: peek var(--peek-sec, 5s) linear forwards; }
+    @keyframes peek { from { transform: scaleX(1); } to { transform: scaleX(0); } }
+
+    #task-mini {
+      display: none; position: fixed; z-index: 40;
+      top: calc(10px + env(safe-area-inset-top)); right: calc(10px + env(safe-area-inset-right));
+      width: 64px; padding: 6px 4px 5px;
+      font-size: 0.62rem; line-height: 1.3; text-align: center; color: #bbb;
+      background: #15171b; border: 1px solid #3a3d45; border-radius: 10px;
+    }
+    #task-mini svg { display: block; width: 22px; height: 22px; margin: 0 auto 2px; fill: currentColor; opacity: 0.8; }
+    #task-mini .mini-tag { display: block; color: #8a8f99; }
+    body[data-mode="exam"][data-stage="run"] #task-mini { display: block; }
+    body.peeking #task-mini { display: none !important; }
+
+    /* ============================================================
+       タイマー
+       ============================================================ */
     #timer-section {
       position: relative;
-      flex: 0 0 auto;
-      padding: 30px 0 15px 0;
-      background-color: #000;
-      color: #fff;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      padding: calc(36px + env(safe-area-inset-top)) 0 calc(14px + env(safe-area-inset-bottom));
+      color: var(--timer-text);
+      background: var(--timer-bg);
       z-index: 10;
     }
+    body[data-mode="study"] #timer-section { box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2); }
+    body[data-mode="exam"][data-stage="run"] #timer-section { padding-bottom: calc(20px + env(safe-area-inset-bottom)); }
+
     .btn-back {
       position: absolute;
-      top: 15px;
-      left: 15px;
-      background-color: transparent;
-      color: #aaa;
-      border: 1px solid #555;
-      padding: 5px 12px;
-      font-size: 0.85rem;
-      border-radius: 15px;
-      cursor: pointer;
+      top: calc(12px + env(safe-area-inset-top)); left: calc(12px + env(safe-area-inset-left));
+      padding: 5px 12px; font-size: 0.85rem; color: #aaa;
+      background: transparent; border: 1px solid #555; border-radius: 15px;
     }
+    #awake-badge {
+      position: absolute;
+      top: calc(16px + env(safe-area-inset-top)); left: 50%; transform: translateX(-50%);
+      font-size: 0.7rem; color: #6d727c; white-space: nowrap;
+    }
+
     #timer-display {
-      font-size: 22vw;
-      font-weight: bold;
-      font-variant-numeric: tabular-nums;
-      line-height: 1;
+      margin-bottom: 0.2em;
+      font-size: 17vw; font-weight: 700; font-variant-numeric: tabular-nums; line-height: 1.05;
+      color: var(--timer-phase1);
       transition: color 0.3s ease;
-      margin-bottom: 12px;
     }
-    
-    #controls {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      margin-bottom: 10px;
+    /* 画面の大きさに合わせた数字の大きさ（縦） */
+    body[data-mode="exam"][data-stage="run"] #timer-display { font-size: min(34vw, 30vh); }
+    body[data-mode="study"] #timer-display { font-size: min(24vw, 17vh); }
+    /* 横長 */
+    @media (orientation: landscape) and (min-width: 640px) {
+      #timer-display { font-size: min(15vw, 28vh); }
+      body[data-mode="exam"][data-stage="run"] #timer-display { font-size: min(30vw, 52vh); }
+      body[data-mode="study"] #timer-display { font-size: min(17vw, 40vh); }
+      #timer-section { padding-top: calc(40px + env(safe-area-inset-top)); padding-right: env(safe-area-inset-right); }
     }
+    body[data-phase="warn"]     #timer-display { color: var(--timer-warn); }
+    body[data-phase="report"]   #timer-display { color: var(--timer-phase2); }
+    body[data-phase="finished"] #timer-display { color: var(--timer-end); }
+
+    #controls { display: flex; align-items: center; justify-content: center; margin: 4px 0 10px; }
     #controls button {
-      font-size: 1.1rem;
-      padding: 12px 20px;
-      margin: 0 6px;
-      border: none;
-      border-radius: 30px;
-      font-weight: bold;
-      color: #fff;
-      cursor: pointer;
+      margin: 0 6px; font-size: 1.1rem; font-weight: 700; color: #fff;
+      border: none; border-radius: 30px;
     }
-    .btn-start { background-color: #28a745; width: 130px; }
-    .btn-seek { background-color: #444; font-size: 1.3rem !important; padding: 10px 20px !important; }
-    .btn-seek:active { background-color: #666; }
-    .btn-reset { background-color: #dc3545; font-size: 0.9rem; padding: 8px 20px; border: none; border-radius: 20px; color: #fff; font-weight: bold; cursor: pointer; }
-    .btn-disabled { background-color: #6c757d !important; opacity: 0.7; }
-    
-    /* 下半分：案内テキストエリア */
-    #text-section {
-      flex: 1;
-      background-color: #f8f9fa;
-      color: #333;
-      padding: 15px 20px;
-      overflow-y: auto;
-      font-size: 14px;
+    .btn-seek {
+      display: grid; place-items: center; width: 64px; height: 46px;
+      background: var(--btn-seek);
+      touch-action: none;
     }
-    .header-text {
-      font-weight: bold;
-      margin-bottom: 10px;
-      border-bottom: 2px solid #ccc;
-      padding-bottom: 10px;
-      line-height: 1.5;
+    .btn-seek:active, .btn-seek.is-pressed { background: var(--btn-seek-pressed); }
+    .btn-seek svg { width: 26px; height: 26px; fill: currentColor; pointer-events: none; }
+
+    .btn-start { width: 130px; padding: 12px 20px; background: var(--btn-start); }
+    .btn-start[data-state="running"] { background: var(--btn-pause); }
+    .btn-start[data-state="paused"]  { background: var(--btn-resume); }
+    .btn-start[data-state="preparing"],
+    .btn-start[data-state="finished"] { background: var(--btn-disabled); opacity: 0.7; }
+
+    .btn-reset {
+      padding: 8px 20px; font-size: 0.9rem; font-weight: 700; color: #fff;
+      background: var(--btn-reset); border: none; border-radius: 20px;
     }
-    .instruction-block {
-      margin-bottom: 10px;
-      padding: 12px;
-      background-color: #fff;
-      border-radius: 8px;
-      box-shadow: 0 1px 3px rgba(0,0,0,0.05);
-      transition: all 0.3s ease;
-      opacity: 0.5;
-      cursor: pointer;
-    }
-    .instruction-block:active { transform: scale(0.98); background-color: #f0f0f0; }
-    .active-block {
-      opacity: 1;
-      background-color: #e6f7ff !important;
-      border-left: 6px solid #0066cc;
-    }
-    .block-title {
-      font-weight: bold;
-      font-size: 1.05em;
-      margin-bottom: 6px;
-      display: flex;
-      justify-content: space-between;
-      color: #0066cc;
-    }
-    ul { margin: 5px 0 0 0; padding-left: 20px; }
-    li { margin-bottom: 3px; }
+    .btn-back.is-armed, .btn-reset.is-armed { color: #fff; background: #b00020; border-color: #b00020; }
   </style>
 </head>
-<body>
+<body data-mode="exam" data-stage="ready" data-phase="interview">
 
-  <!-- 音声ファイル読み込み -->
-  <audio id="audio-start" src="start.mp3" preload="auto"></audio>
-  <audio id="audio-10min" src="10min.mp3" preload="auto"></audio>
-  <audio id="audio-12min" src="12min.mp3" preload="auto"></audio>
+  <!-- 画面を消さないための補助（下の「画面を消さない」参照） -->
+  <video id="awake-video" src="awake.mp4" muted loop playsinline webkit-playsinline preload="auto" aria-hidden="true"></video>
 
-  <!-- 画面①：シナリオ選択 -->
-  <div id="setup-screen">
+  <!-- ===================== 設定画面 ===================== -->
+  <main id="setup-screen">
+   <div class="setup-inner">
     <h1>OSCE 学習会タイマー</h1>
-    <select id="scenario-select" class="select-box">
-      <option value="default">デフォルト（汎用シナリオ）</option>
-      <option value="scenario1">シナリオ①：発熱（8か月 女児）</option>
-    </select>
-    <button type="button" class="btn-next" onclick="goToTimer()">タイマー画面へ</button>
-  </div>
 
-  <!-- 画面②：タイマー実行画面 -->
-  <div id="app-screen">
-    <div id="timer-section">
-      <button type="button" class="btn-back" onclick="goBack()">◀ 戻る</button>
-      <div id="timer-display">00:00</div>
-      
+    <fieldset class="field">
+      <legend>時間</legend>
+      <div class="seg" id="seg-preset">
+        <label><input type="radio" name="preset" value="postcc16" checked><span>PostCC<small>16分</small></span></label>
+        <label><input type="radio" name="preset" value="precc10"><span>PreCC<small>10分</small></span></label>
+        <label><input type="radio" name="preset" value="precc6"><span>PreCC<small>6分</small></span></label>
+      </div>
+    </fieldset>
+
+    <fieldset class="field">
+      <legend>見え方</legend>
+      <div class="seg" id="seg-mode">
+        <label><input type="radio" name="mode" value="exam" checked><span>試験想定<small>開始後はタイマーだけ</small></span></label>
+        <label><input type="radio" name="mode" value="study"><span>学習会想定<small>場面を常に表示</small></span></label>
+      </div>
+    </fieldset>
+
+    <div class="field">
+      <label class="label" for="scenario-select">課題文</label>
+      <select id="scenario-select" class="select-box"></select>
+      <div class="row" style="margin-top:10px">
+        <label class="btn-file">PowerPointを読み込む<input type="file" id="pptx-file" accept=".pptx,application/vnd.openxmlformats-officedocument.presentationml.presentation"></label>
+        <button type="button" class="btn-sub is-quiet" id="pptx-clear" hidden>読み込みを消す</button>
+      </div>
+      <p class="help" id="import-status" role="status">学習会の前に、その回のPowerPointを読み込むと、その回のシナリオだけが選べます（電波は要りません）。</p>
+    </div>
+
+    <details class="manual" id="manual">
+      <summary>手入力で課題文をつくる</summary>
+      <div class="manual-body">
+        <div>
+          <input type="text" id="m-situ" class="text-box" aria-label="状況" value="ここは初診外来です。">
+          <div class="chips" style="margin-top:6px">
+            <button type="button" data-fill="ここは初診外来です。">初診外来</button>
+            <button type="button" data-fill="ここは救急外来です。">救急外来</button>
+          </div>
+        </div>
+        <input type="text" id="m-patient" class="text-box" aria-label="患者" placeholder="患者 田中 花子 さん（36歳女性）">
+        <textarea id="m-supp" class="text-box" aria-label="補足（1行ごと）" placeholder="補足があれば（1行に1つ）"></textarea>
+      </div>
+    </details>
+
+    <button type="button" class="btn-next" id="go-timer">タイマー画面へ</button>
+    <p id="offline-status" data-state="checking" role="status">オフライン準備中…</p>
+    <p id="offline-hint" hidden>ホーム画面に追加しておくと、端末に保存されたデータが消えにくくなります（共有ボタン →「ホーム画面に追加」）。</p>
+   </div>
+  </main>
+
+  <!-- ===================== タイマー画面 ===================== -->
+  <div id="app">
+    <section id="task-panel" aria-label="課題文">
+      <div class="peek-bar"></div>
+      <div class="task-tag" id="task-tag"></div>
+      <div id="task-body"></div>
+    </section>
+
+    <section id="timer-section">
+      <button type="button" class="btn-back" id="btn-back">◀ 戻る</button>
+      <div id="awake-badge" aria-live="off"></div>
+      <div id="timer-display" aria-live="off">00:00</div>
       <div id="controls">
-        <button type="button" class="btn-seek" id="rewindBtn">⏪</button>
-        <button type="button" class="btn-start" id="startBtn" onclick="toggleTimer()">スタート</button>
-        <button type="button" class="btn-seek" id="ffBtn">⏩</button>
+        <button type="button" class="btn-seek" id="btn-rewind" aria-label="巻き戻し（長押しで加速）">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M11 6v12L2 12zM21 6v12l-9-6z"/></svg>
+        </button>
+        <button type="button" class="btn-start" id="btn-start" data-state="idle">スタート</button>
+        <button type="button" class="btn-seek" id="btn-forward" aria-label="早送り（長押しで加速）">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M13 6v12l9-6zM3 6v12l9-6z"/></svg>
+        </button>
       </div>
-      <div>
-        <button type="button" class="btn-reset" onclick="resetTimer()">リセット</button>
-      </div>
-    </div>
-    
-    <div id="text-section">
-      <div class="header-text">
-        ・ここは初診外来です。<br>
-        　患者: <span id="p-name">○○ ○○</span> さん（<span id="p-age">○○歳</span> <span id="p-gender">男性/女性</span>）<br>
-        　<span id="p-memo" style="font-size: 0.9em; color: #d84315;"></span>
-      </div>
-      
-      <!-- 0分ジャンプ -->
-      <div id="phase1" class="instruction-block active-block" onclick="jumpTo(0)">
-        <div class="block-title"><span>医療面接と身体診察</span><span>12分</span></div>
-        <div style="font-size: 0.9em;">身体診察では何の診察をしているか、具体的な所見を述べながら行ってください。</div>
-      </div>
-      
-      <!-- 11:53ジャンプ -->
-      <div id="phase2" class="instruction-block" onclick="jumpTo(12)">
-        <div class="block-title"><span>情報整理と指導医への報告</span><span>4分</span></div>
-        <div style="font-size: 0.9em;">以下の点を含めて報告してください。<ul><li>患者から得た情報</li><li>鑑別すべき疾患・疾患とその根拠</li></ul></div>
-      </div>
-    </div>
+      <div><button type="button" class="btn-reset" id="btn-reset">リセット</button></div>
+    </section>
+
+    <button type="button" id="task-mini" aria-label="課題文を見る">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 2h9l5 5v15H6zM14 3.5V8h4.5zM8.5 12h8v1.5h-8zm0 3.5h8V17h-8z"/></svg>
+      課題文<span class="mini-tag" id="mini-tag"></span>
+    </button>
   </div>
 
+  <script src="jszip.min.js"></script>
   <script>
-    const scenarios = {
-      "default": { name: "○○ ○○", age: "○○歳", gender: "男性/女性", memo: "" },
-      "scenario1": { name: "田中 乃愛", age: "8か月", gender: "女児", memo: "主訴：発熱（保護者=父親が病歴を説明）" }
+    'use strict';
+
+    /* ==============================================================
+       設定（時間・音声はここだけ直せばOK）
+
+       cues（音声）の kind
+         intro   … 開始ボタンを押すと最初に流れ、終わってからカウントが始まる
+         endAt   … 「at 秒ちょうどに言い終わる」ように、音声の長さを測って早めに流す
+                   （長さが測れないときは lead 秒前に流す）
+         startAt … at 秒ちょうどに流し始める
+       ============================================================== */
+    const INTERVIEW_BODY = '身体診察では何の診察をしているか、また具体的な所見を述べながら行ってください。適宜、別紙「指導医への報告のためのメモ用紙」を使用してください。メモ用紙は評価対象とはしませんが、終了後回収します。';
+    const DEFAULT_NOTE = '身体診察中も病歴を医療面接模擬患者に尋ねることが可能です。';
+
+    const PRESETS = {
+      postcc16: {
+        label: 'PostCC 16分',
+        totalSec: 16 * 60,
+        warnSec: null,
+        defaultNote: DEFAULT_NOTE,
+        blocks: [
+          { id: 'interview', title: '医療面接と身体診察', minutes: 12, startSec: 0, body: INTERVIEW_BODY },
+          { id: 'report', title: '情報整理と指導医への報告', minutes: 4, startSec: 12 * 60,
+            body: '指導医への報告には以下の点を含めてください。',
+            bullets: ['患者から得た情報', '鑑別すべき病態・疾患とその根拠'] },
+        ],
+        cues: [
+          { id: 'start',  file: 'start.mp3', kind: 'intro' },
+          { id: 'warn',   file: '10min.mp3', kind: 'endAt', at: 10 * 60, lead: 2 },   // 「残り2分」
+          { id: 'report', file: '12min.mp3', kind: 'endAt', at: 12 * 60, lead: 7 },   // 「報告に移ります」
+          { id: 'end',    file: 'end.mp3',   kind: 'startAt', at: 16 * 60 },
+        ],
+      },
+      precc10: {
+        label: 'PreCC 10分',
+        totalSec: 10 * 60,
+        warnSec: 8 * 60,
+        defaultNote: '',
+        blocks: [{ id: 'interview', title: '医療面接と身体診察', minutes: 10, startSec: 0, body: '' }],
+        cues: [
+          { id: 'start', file: 'precc-start.mp3', kind: 'intro' },                               // 「試験を開始してください」
+          { id: 'warn',  file: 'precc-2min.mp3',  kind: 'endAt', at: 8 * 60, lead: 3 },        // 「試験は残り2分です」
+          { id: 'end',   file: 'precc-end.mp3',   kind: 'startAt', at: 10 * 60 },               // 「試験を終了してください」
+        ],
+      },
+      precc6: {
+        label: 'PreCC 6分',
+        totalSec: 6 * 60,
+        warnSec: 4 * 60,
+        defaultNote: '',
+        blocks: [{ id: 'interview', title: '医療面接と身体診察', minutes: 6, startSec: 0, body: '' }],
+        cues: [
+          { id: 'start', file: 'precc-start.mp3', kind: 'intro' },
+          { id: 'warn',  file: 'precc-2min.mp3',  kind: 'endAt', at: 4 * 60, lead: 3 },
+          { id: 'end',   file: 'precc-end.mp3',   kind: 'startAt', at: 6 * 60 },
+        ],
+      },
     };
 
-    let timerInterval = null;
-    let seekInterval = null;
-    let seekTicks = 0;
-    let elapsedSeconds = 0;
-    let isRunning = false;
-    let isAudioUnlocked = false;
+    const PEEK_SEC = 5;          // 課題文を拡大して見せる秒数
+    const ARM_MS = 3000;         // 「もう一度タップ」の待ち時間
 
-    const display = document.getElementById('timer-display');
-    const startBtn = document.getElementById('startBtn');
-    const phase1Block = document.getElementById('phase1');
-    const phase2Block = document.getElementById('phase2');
-    
-    const aStart = document.getElementById('audio-start');
-    const a10 = document.getElementById('audio-10min');
-    const a12 = document.getElementById('audio-12min');
+    /* ==============================================================
+       小さな道具
+       ============================================================== */
+    const $ = (id) => document.getElementById(id);
+    const pad2 = (n) => String(n).padStart(2, '0');
+    const formatTime = (sec) => `${pad2(Math.floor(sec / 60))}:${pad2(sec % 60)}`;
+    const clamp = (n, min, max) => Math.max(min, Math.min(max, n));
 
-    const TRIG_10MIN = 9 * 60 + 58;   // 09:58
-    const TRIG_12MIN = 11 * 60 + 53;  // 11:53
-    const PHASE2_START_SEC = 12 * 60; // 12:00
-    const TOTAL_SEC = 16 * 60;        // 16:00
+    // 端末への保存（使えない環境でも画面は動くように、必ず try で包む）
+    const store = {
+      get(key, fallback) {
+        try { const v = localStorage.getItem(key); return v ? JSON.parse(v) : fallback; } catch (e) { return fallback; }
+      },
+      set(key, value) { try { localStorage.setItem(key, JSON.stringify(value)); } catch (e) { /* 無視 */ } },
+      remove(key) { try { localStorage.removeItem(key); } catch (e) { /* 無視 */ } },
+    };
 
-    function unlockAudio() {
-      if (isAudioUnlocked) return;
-      [aStart, a10, a12].forEach(audio => {
-        audio.muted = true;
-        audio.play().then(() => {
-          audio.pause();
-          audio.currentTime = 0;
-          audio.muted = false;
-        }).catch(() => {
-          audio.muted = false;
+    const state = {
+      preset: PRESETS.postcc16,
+      mode: 'exam',
+      scenario: null,      // 表示する課題文（なければ null）
+    };
+
+    /* ==============================================================
+       音声
+       ============================================================== */
+    const audio = {
+      els: {},
+      ctx: null,
+
+      // 時間の種類を選んだときに、その音声だけを用意する
+      load(preset) {
+        this.els = {};
+        preset.cues.forEach((c) => {
+          if (this.els[c.file]) return;
+          const a = new Audio();
+          a.preload = 'auto';
+          a.src = c.file;
+          this.els[c.file] = a;
         });
+      },
+
+      // iOSは、ユーザーが触れたタイミングで一度鳴らしておかないと、あとで自動再生できない
+      unlock() {
+        Object.values(this.els).forEach((a) => {
+          if (a._unlocked) return;
+          a._unlocked = true;
+          a.muted = true;
+          const restore = () => { a.pause(); a.currentTime = 0; a.muted = false; };
+          const p = a.play();
+          if (p && p.then) p.then(restore).catch(() => { a.muted = false; });
+          else restore();
+        });
+      },
+
+      stopAll() { Object.values(this.els).forEach((a) => { a.pause(); a.currentTime = 0; }); },
+
+      duration(file) {
+        const a = this.els[file];
+        return a && isFinite(a.duration) && a.duration > 0 ? a.duration : null;
+      },
+
+      play(file) {
+        const a = this.els[file];
+        if (!a) return Promise.reject(new Error('no audio'));
+        a.currentTime = 0;
+        const p = a.play();
+        return p || Promise.resolve();
+      },
+
+      // 終了音。鳴らせないときは合成のチャイムで代用する
+      playEnd(file) { this.play(file).catch(() => this.chime()); },
+
+      chime() {
+        try {
+          this.ctx = this.ctx || new (window.AudioContext || window.webkitAudioContext)();
+          if (this.ctx.state === 'suspended') this.ctx.resume();
+          const t = this.ctx.currentTime;
+          const osc = this.ctx.createOscillator();
+          const gain = this.ctx.createGain();
+          osc.type = 'sine';
+          osc.frequency.setValueAtTime(880, t);
+          gain.gain.setValueAtTime(0.8, t);
+          gain.gain.exponentialRampToValueAtTime(0.001, t + 2.5);
+          osc.connect(gain);
+          gain.connect(this.ctx.destination);
+          osc.start(t);
+          osc.stop(t + 2.5);
+        } catch (e) { /* 音が出せなくても画面の動作は止めない */ }
+      },
+    };
+
+    // 音声が流れ始める時刻（ミリ秒）
+    function cueTriggerMs(cue) {
+      if (cue.kind === 'endAt') {
+        const lead = audio.duration(cue.file) ?? cue.lead;
+        return Math.max(0, cue.at - lead) * 1000;
+      }
+      return cue.at * 1000;
+    }
+
+    /* ==============================================================
+       画面を消さない（実施中に端末がスリープしないように）
+       ① Screen Wake Lock … 対応している端末では、これが本命
+       ② ほぼ見えない小さな動画を流し続ける … ①が使えない端末向けの補助
+       どちらが効いているかは、タイマー画面の上の小さな表示で分かります。
+       ============================================================== */
+    const awake = {
+      sentinel: null,
+      active: false,
+      videoOn: false,
+
+      start() {
+        this.active = true;
+        this.lock();
+        const v = $('awake-video');
+        const p = v.play();
+        const on = () => { this.videoOn = true; this.badge(); };
+        if (p && p.then) p.then(on).catch(() => { this.videoOn = false; this.badge(); }); else on();
+        this.badge();
+      },
+      async lock() {
+        try {
+          if ('wakeLock' in navigator && !this.sentinel) {
+            this.sentinel = await navigator.wakeLock.request('screen');
+            this.sentinel.addEventListener('release', () => { this.sentinel = null; this.badge(); });
+          }
+        } catch (e) { /* 非対応・拒否は無視 */ }
+        this.badge();
+      },
+      stop() {
+        this.active = false;
+        if (this.sentinel) { this.sentinel.release().catch(() => {}); this.sentinel = null; }
+        const v = $('awake-video');
+        v.pause();
+        this.videoOn = false;
+        this.badge();
+      },
+      badge() {
+        const b = $('awake-badge');
+        if (!this.active) { b.textContent = ''; return; }
+        b.textContent = this.sentinel ? '☀ 画面オン' : this.videoOn ? '☀ 画面オン（補助）' : '';
+      },
+    };
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'visible' && awake.active) {
+        awake.lock();
+        const v = $('awake-video');
+        if (v.paused) v.play().catch(() => {});
+      }
+    });
+
+    /* ==============================================================
+       タイマー本体（ミリ秒で正確に測り、画面は秒で表示）
+       status: idle(開始前) / preparing(開始音声中) / running / paused / finished
+       ============================================================== */
+    const timer = {
+      status: 'idle',
+      elapsedMs: 0,
+      baseMs: 0,            // 基準にした経過
+      anchorMs: 0,          // その基準を決めた時刻（performance.now）
+      fired: new Set(),     // 音声を流し終えた（または通り過ぎた）ものの id
+      tickId: null,
+      lastActive: -1,
+
+      get total() { return state.preset.totalSec; },
+      get elapsed() { return Math.floor(this.elapsedMs / 1000); },
+      get cues() { return state.preset.cues.filter((c) => c.kind !== 'intro'); },
+
+      // --- 画面への反映 ---
+      render() {
+        const P = state.preset;
+        const e = this.elapsed;
+        $('timer-display').textContent = formatTime(e);
+
+        const finished = e >= P.totalSec;
+        let idx = 0;
+        P.blocks.forEach((b, i) => { if (e >= b.startSec) idx = i; });
+        const phase = finished ? 'finished'
+                    : (P.warnSec && e >= P.warnSec) ? 'warn'
+                    : P.blocks[idx].id === 'report' ? 'report'
+                    : 'interview';
+        document.body.dataset.phase = phase;
+        document.body.dataset.stage = (this.status === 'idle' && this.elapsedMs === 0) ? 'ready' : 'run';
+        if (document.body.dataset.stage === 'ready') peek.close();
+
+        document.querySelectorAll('.instruction-block').forEach((node, i) => {
+          node.classList.toggle('is-active', i === idx);
+        });
+        if (idx !== this.lastActive) {
+          // 場面が切り替わったら、学習会想定では該当ブロックが見える位置まで動かす
+          if (this.lastActive !== -1 && state.mode === 'study' && this.status === 'running') {
+            const node = document.querySelectorAll('.instruction-block')[idx];
+            if (node && node.scrollIntoView) node.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          }
+          this.lastActive = idx;
+        }
+
+        const labels = { idle: 'スタート', preparing: '準備中...', running: '一時停止', paused: '再開', finished: '終了' };
+        const btn = $('btn-start');
+        btn.textContent = labels[this.status];
+        btn.dataset.state = this.status;
+        btn.disabled = this.status === 'preparing' || this.status === 'finished';
+      },
+
+      // 通り過ぎた音声は「流し終えた」ことにする（早送りで一気に鳴らないように）
+      markPassed() {
+        this.fired = new Set(this.cues.filter((c) => cueTriggerMs(c) < this.elapsedMs).map((c) => c.id));
+      },
+
+      // --- 経過を直接動かす（早送り・ジャンプ用。音は鳴らさない） ---
+      setElapsed(sec) {
+        this.elapsedMs = clamp(sec, 0, this.total) * 1000;
+        this.baseMs = this.elapsedMs;
+        this.anchorMs = performance.now();
+        this.markPassed();
+        if (this.status === 'running' && this.elapsedMs >= this.total * 1000) this.finish();
+        else if (this.status === 'finished' && this.elapsedMs < this.total * 1000) {
+          // 終了後に巻き戻したときは、続きから再開できる状態に戻す
+          this.status = this.elapsedMs === 0 ? 'idle' : 'paused';
+        }
+        this.render();
+      },
+
+      // --- 時計を進める（端末の時刻を基準にするので、ずれにくい） ---
+      tick() {
+        if (this.status !== 'running') return;
+        const totalMs = this.total * 1000;
+        this.elapsedMs = Math.min(totalMs, this.baseMs + (performance.now() - this.anchorMs));
+        for (const c of this.cues) {
+          if (this.fired.has(c.id)) continue;
+          const at = cueTriggerMs(c);
+          if (at > this.elapsedMs) continue;
+          this.fired.add(c.id);
+          // 画面を閉じていて遅れて戻ったときは、直近の1.5秒以内の音だけ鳴らす
+          if (this.elapsedMs - at <= 1500) {
+            if (c.id === 'end') audio.playEnd(c.file); else audio.play(c.file).catch(() => {});
+          }
+        }
+        if (this.elapsedMs >= totalMs) this.finish();
+        this.render();
+      },
+
+      startTicking() { this.stopTicking(); this.tickId = setInterval(() => this.tick(), 100); },
+      stopTicking() { if (this.tickId) { clearInterval(this.tickId); this.tickId = null; } },
+
+      begin() {
+        this.status = 'running';
+        this.baseMs = this.elapsedMs;
+        this.anchorMs = performance.now();
+        this.startTicking();
+        this.render();
+      },
+
+      finish() {
+        this.status = 'finished';
+        this.elapsedMs = this.total * 1000;
+        this.stopTicking();
+        awake.stop();
+      },
+
+      // --- 操作 ---
+      toggle() {
+        audio.unlock();
+        if (this.status === 'running') {
+          this.stopTicking();
+          audio.stopAll();
+          awake.stop();
+          this.status = 'paused';
+          this.render();
+        } else if (this.status === 'idle' || this.status === 'paused') {
+          awake.start();                       // 押した瞬間（iPhoneが許す瞬間）に始める
+          if (this.elapsedMs === 0) this.playStartVoice();
+          else this.begin();
+        }
+      },
+
+      // 開始音声が終わってからカウントを始める
+      playStartVoice() {
+        this.status = 'preparing';
+        this.render();
+        const intro = state.preset.cues.find((c) => c.kind === 'intro');
+        const a = intro && audio.els[intro.file];
+        const go = () => { if (this.status === 'preparing') this.begin(); };
+        if (!a) { go(); return; }
+        a.onended = go;       // 代入なので、何度押しても古い処理は残らない
+        a.onerror = go;
+        audio.play(intro.file).catch(go);
+      },
+
+      reset() {
+        this.stopTicking();
+        audio.stopAll();
+        awake.stop();
+        this.status = 'idle';
+        this.elapsedMs = 0;
+        this.baseMs = 0;
+        this.fired = new Set();
+        this.lastActive = -1;
+        this.render();
+        $('task-panel').scrollTop = 0;
+      },
+
+      // 場面をタップ → その場面の頭へ。0:00なら最初から、途中の場面ならそのまま動き出す
+      jumpToBlock(i) {
+        audio.unlock();
+        audio.stopAll();
+        const b = state.preset.blocks[i];
+        if (b.startSec === 0) {
+          this.setElapsed(0);
+          if (this.status === 'preparing') this.status = 'idle';
+          this.render();
+          return;
+        }
+        // その場面へ移る案内音声があれば、その頭から流す
+        const lead = state.preset.cues.find((c) => c.kind === 'endAt' && c.at === b.startSec);
+        this.status = 'paused';
+        awake.start();
+        this.setElapsed(lead ? Math.floor(cueTriggerMs(lead) / 1000) : b.startSec);
+        this.begin();
+      },
+    };
+
+    /* ==============================================================
+       課題文の表示
+       ============================================================== */
+    function addP(parent, cls, text) {
+      const p = document.createElement('p');
+      p.className = cls;
+      p.textContent = text;
+      parent.appendChild(p);
+    }
+
+    function renderTask() {
+      const P = state.preset;
+      const s = state.scenario;
+      const body = $('task-body');
+      body.textContent = '';
+
+      if (s) {
+        (s.situation || []).forEach((t) => addP(body, 't-situ', t));
+        if (s.patient) addP(body, 't-patient', s.patient);
+        (s.supplement || []).forEach((t) => addP(body, 't-supp', t));
+      }
+
+      P.blocks.forEach((b, i) => {
+        const div = document.createElement('div');
+        div.className = 'instruction-block';
+        div.setAttribute('role', 'button');
+        div.tabIndex = 0;
+        const title = document.createElement('div');
+        title.className = 'block-title';
+        const t1 = document.createElement('span'); t1.textContent = b.title;
+        const t2 = document.createElement('span'); t2.textContent = `${b.minutes}分間`;
+        title.append(t1, t2);
+        div.appendChild(title);
+        if (b.body || b.bullets) {
+          const bd = document.createElement('div');
+          bd.className = 'block-body';
+          bd.append(document.createTextNode(b.body || ''));
+          if (b.bullets) {
+            const ul = document.createElement('ul');
+            b.bullets.forEach((x) => { const li = document.createElement('li'); li.textContent = x; ul.appendChild(li); });
+            bd.appendChild(ul);
+          }
+          div.appendChild(bd);
+        }
+        onActivate(div, () => { if (state.mode === 'study') timer.jumpToBlock(i); });
+        body.appendChild(div);
       });
-      isAudioUnlocked = true;
+
+      const note = s && s.note && s.note.length ? s.note : (P.defaultNote ? [P.defaultNote] : []);
+      note.forEach((t) => addP(body, 't-note', t));
+
+      const tag = (s && s.tag) || '';
+      $('task-tag').textContent = tag;
+      $('mini-tag').textContent = tag;
+      timer.lastActive = -1;
     }
 
-    function stopAllAudio() {
-      [aStart, a10, a12].forEach(audio => {
-        audio.pause();
-        audio.currentTime = 0;
+    // 試験想定：課題文を隅に小さく残し、タップで数秒だけ大きく見せる
+    const peek = {
+      id: null,
+      open() {
+        const panel = $('task-panel');
+        panel.style.setProperty('--peek-sec', PEEK_SEC + 's');
+        panel.classList.remove('is-peek');
+        void panel.offsetWidth;                 // アニメーションをやり直す
+        panel.classList.add('is-peek');
+        panel.scrollTop = 0;
+        document.body.classList.add('peeking');
+        clearTimeout(this.id);
+        this.id = setTimeout(() => this.close(), PEEK_SEC * 1000);
+      },
+      close() {
+        clearTimeout(this.id);
+        $('task-panel').classList.remove('is-peek');
+        document.body.classList.remove('peeking');
+      },
+    };
+
+    /* ==============================================================
+       PowerPoint（.pptx）から課題文を読み取る
+       - 「医療面接」「患者」を含むスライドを課題文とみなし、バイタル・所見などは無視します
+       - 主訴（スライド内のメモ書きなど）は読み取っても画面には出しません
+       ============================================================== */
+    const pptx = {
+      norm(s) {
+        return s.replace(/[０-９]/g, (c) => String.fromCharCode(c.charCodeAt(0) - 0xFEE0))
+                .replace(/[\s　]+/g, ' ').trim();
+      },
+      clean(s) {
+        return this.norm(s).replace(/^[•・●■◆]\s*/, '')
+                .replace(/\s*（\s*/g, '（').replace(/\s*）/g, '）')
+                .replace(/\s*\(\s*/g, '（').replace(/\s*\)/g, '）');
+      },
+      resolve(base, target) {
+        if (target.startsWith('/')) return target.slice(1);
+        const parts = (base + target).split('/');
+        const out = [];
+        parts.forEach((p) => { if (p === '..') out.pop(); else if (p && p !== '.') out.push(p); });
+        return out.join('/');
+      },
+
+      // 1枚のスライドを「どの図形にどんな段落があるか」に分解する
+      readSlide(doc) {
+        const shapes = [];
+        Array.from(doc.getElementsByTagName('p:sp')).forEach((sp) => {
+          const ph = sp.getElementsByTagName('p:ph')[0];
+          const phType = ph ? (ph.getAttribute('type') || 'body') : null;
+          const paras = Array.from(sp.getElementsByTagName('a:p'))
+            .map((p) => Array.from(p.getElementsByTagName('a:t')).map((t) => t.textContent).join(''))
+            .map((t) => this.clean(t))
+            .filter((t) => t);
+          if (paras.length) shapes.push({ placeholder: !!ph, isTitle: phType === 'title' || phType === 'ctrTitle', paras });
+        });
+        return shapes;
+      },
+
+      parseTask(shapes, nextTitle, index) {
+        const main = shapes.find((s) => !s.isTitle && s.paras.some((t) => t.includes('医療面接')) && s.paras.some((t) => /^患者/.test(t)));
+        if (!main) return null;
+        const paras = main.paras;
+        const iMed = paras.findIndex((t) => t.includes('医療面接'));
+        const iPat = paras.findIndex((t, i) => i < iMed && /^患者/.test(t));
+        const situation = paras.slice(0, Math.max(iPat, 0));
+        const patient = iPat >= 0 ? paras[iPat] : '';
+        const supplement = paras.slice(iPat + 1, iMed);
+
+        // 末尾の注意書き：報告（または面接）の説明文のあとに残った段落
+        let end = -1;
+        paras.forEach((t, i) => { if (i > iMed && (t.includes('鑑別すべき') || t.includes('回収'))) end = i; });
+        const note = end >= 0 ? paras.slice(end + 1) : [];
+
+        // タグ（シナリオ①など）：課題文スライド内の別の文字 → 次のスライドの題名 → 通し番号
+        const others = shapes.filter((s) => s !== main && !s.isTitle).flatMap((s) => s.paras);
+        const title = shapes.filter((s) => s.isTitle).flatMap((s) => s.paras);
+        let tag = others.concat(title).find((t) => /シナリオ/.test(t));
+        if (!tag && nextTitle && /シナリオ/.test(nextTitle)) tag = nextTitle;
+        if (!tag) tag = `シナリオ${index + 1}`;
+
+        return { tag, situation, patient, supplement, note };
+      },
+
+      async parse(file) {
+        if (!window.JSZip) throw new Error('読み込み用の部品が見つかりません。');
+        let zip;
+        try { zip = await JSZip.loadAsync(await file.arrayBuffer()); }
+        catch (e) { throw new Error('PowerPoint（.pptx）のファイルではないようです。'); }
+        const dp = new DOMParser();
+        const xml = async (path) => {
+          const f = zip.file(path);
+          return f ? dp.parseFromString(await f.async('string'), 'application/xml') : null;
+        };
+        const pres = await xml('ppt/presentation.xml');
+        const rels = await xml('ppt/_rels/presentation.xml.rels');
+        if (!pres || !rels) throw new Error('PowerPoint（.pptx）のファイルではないようです。');
+
+        const relMap = {};
+        Array.from(rels.getElementsByTagName('Relationship')).forEach((r) => { relMap[r.getAttribute('Id')] = r.getAttribute('Target'); });
+        const paths = Array.from(pres.getElementsByTagName('p:sldId'))
+          .map((n) => relMap[n.getAttribute('r:id')])
+          .filter(Boolean)
+          .map((t) => this.resolve('ppt/', t));
+
+        const slides = [];
+        for (const p of paths) {
+          const doc = await xml(p);
+          slides.push(doc ? this.readSlide(doc) : []);
+        }
+
+        const scenarios = [];
+        slides.forEach((shapes, i) => {
+          const next = slides[i + 1] || [];
+          const nextTitle = (next.find((s) => s.isTitle) || { paras: [''] }).paras[0];
+          const sc = this.parseTask(shapes, nextTitle, scenarios.length);
+          if (sc) scenarios.push(sc);
+        });
+        if (!scenarios.length) throw new Error('課題文のスライド（「医療面接」「患者」を含むスライド）が見つかりませんでした。');
+        return scenarios;
+      },
+    };
+
+    /* ==============================================================
+       設定画面
+       ============================================================== */
+    const session = { scenarios: [], importedAt: null };
+
+    function scenarioLabel(s) {
+      // 「患者 田中 花子 さん（36歳女性）」→「田中 花子 さん」。主訴などは含めない
+      const m = /^患者\s*(.*?さん)/.exec(s.patient || '');
+      const name = m ? m[1].replace(/（[^）]*）/g, '').replace(/\s+/g, ' ') : (s.patient || '');
+      return `${s.tag}　${name}`.trim();
+    }
+
+    function manualScenario() {
+      const lines = (id) => $(id).value.split('\n').map((t) => t.trim()).filter(Boolean);
+      return {
+        tag: '', situation: lines('m-situ'), patient: $('m-patient').value.trim(), supplement: lines('m-supp'), note: [],
+      };
+    }
+
+    function buildScenarioOptions(selected) {
+      const sel = $('scenario-select');
+      sel.textContent = '';
+      const add = (value, label) => { const o = document.createElement('option'); o.value = value; o.textContent = label; sel.appendChild(o); };
+      add('none', '課題文なし（タイマーだけ）');
+      session.scenarios.forEach((s, i) => add('s' + i, scenarioLabel(s)));
+      add('manual', '手入力（下の欄）');
+      sel.value = Array.from(sel.options).some((o) => o.value === selected) ? selected : (session.scenarios.length ? 's0' : 'none');
+    }
+
+    function importStatus(text, kind) {
+      const el = $('import-status');
+      el.textContent = text;
+      el.dataset.state = kind || '';
+    }
+
+    function refreshImportStatus() {
+      $('pptx-clear').hidden = !session.scenarios.length;
+      if (session.scenarios.length) {
+        const d = new Date(session.importedAt);
+        importStatus(`✓ ${session.scenarios.length}件のシナリオを読み込み済み（${d.getMonth() + 1}/${d.getDate()} ${d.getHours()}:${pad2(d.getMinutes())}）。この端末に保存されています。`, 'ok');
+      } else {
+        importStatus('学習会の前に、その回のPowerPointを読み込むと、その回のシナリオだけが選べます（電波は要りません）。', '');
+      }
+    }
+
+    function applySelection() {
+      const mode = document.querySelector('input[name="mode"]:checked').value;
+      const presetKey = document.querySelector('input[name="preset"]:checked').value;
+      const v = $('scenario-select').value;
+      state.mode = mode;
+      state.preset = PRESETS[presetKey];
+      state.scenario = v === 'manual' ? manualScenario()
+                    : /^s\d+$/.test(v) ? session.scenarios[Number(v.slice(1))] || null
+                    : null;
+      document.body.dataset.mode = mode;
+      store.set('osce.prefs', { preset: presetKey, mode, scenario: v });
+      store.set('osce.manual', { situ: $('m-situ').value, patient: $('m-patient').value, supp: $('m-supp').value });
+    }
+
+    function showTimerScreen() {
+      applySelection();
+      audio.load(state.preset);
+      audio.unlock();
+      timer.reset();
+      renderTask();
+      timer.render();
+      $('setup-screen').style.display = 'none';
+      $('app').classList.add('is-visible');
+    }
+
+    function showSetupScreen() {
+      timer.reset();
+      peek.close();
+      $('app').classList.remove('is-visible');
+      $('setup-screen').style.display = '';
+    }
+
+    // 誤タップで画面を離れたり、リセットしたりしないように、動いている間は2回タップにする
+    function guarded(button, label, needGuard, action) {
+      let armedId = null;
+      const original = button.textContent;
+      const disarm = () => { clearTimeout(armedId); armedId = null; button.classList.remove('is-armed'); button.textContent = original; };
+      button.addEventListener('click', () => {
+        if (!needGuard() || armedId) { disarm(); action(); return; }
+        button.classList.add('is-armed');
+        button.textContent = label;
+        armedId = setTimeout(disarm, ARM_MS);
       });
     }
 
-    function goToTimer() {
-      const selectedId = document.getElementById('scenario-select').value;
-      const data = scenarios[selectedId] || scenarios["default"];
-      document.getElementById('p-name').textContent = data.name;
-      document.getElementById('p-age').textContent = data.age;
-      document.getElementById('p-gender').textContent = data.gender;
-      document.getElementById('p-memo').textContent = data.memo;
-      
-      document.getElementById('setup-screen').style.display = 'none';
-      document.getElementById('app-screen').style.display = 'flex';
-      unlockAudio();
+    function onActivate(element, handler) {
+      element.addEventListener('click', handler);
+      element.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handler(); }
+      });
     }
 
-    function goBack() {
-      resetTimer();
-      document.getElementById('app-screen').style.display = 'none';
-      document.getElementById('setup-screen').style.display = 'flex';
+    /* ==============================================================
+       早送り／巻き戻し（押している間くり返し。長く押すほど速くなる）
+       ============================================================== */
+    function bindSeekButton(button, direction) {
+      let intervalId = null;
+      let ticks = 0;
+      const step = () => {
+        ticks++;
+        const speed = ticks > 15 ? 15 : ticks > 6 ? 5 : 1;
+        timer.setElapsed(timer.elapsed + direction * speed);
+      };
+      const stop = () => {
+        if (intervalId) { clearInterval(intervalId); intervalId = null; }
+        button.classList.remove('is-pressed');
+      };
+      button.addEventListener('pointerdown', (e) => {
+        e.preventDefault();
+        try { button.setPointerCapture(e.pointerId); } catch (err) { /* 無視 */ }
+        stop();
+        ticks = 0;
+        button.classList.add('is-pressed');
+        timer.setElapsed(timer.elapsed + direction);
+        intervalId = setInterval(step, 80);
+      });
+      ['pointerup', 'pointercancel', 'lostpointercapture'].forEach((type) => button.addEventListener(type, stop));
+      button.addEventListener('contextmenu', (e) => e.preventDefault());
     }
 
-    let audioCtx = null;
-    function playEndChime() {
-      try {
-        if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-        if (audioCtx.state === 'suspended') audioCtx.resume();
-        const osc = audioCtx.createOscillator();
-        const gain = audioCtx.createGain();
-        osc.connect(gain);
-        gain.connect(audioCtx.destination);
-        osc.type = 'sine';
-        osc.frequency.setValueAtTime(880, audioCtx.currentTime);
-        gain.gain.setValueAtTime(0.8, audioCtx.currentTime);
-        gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 2.5);
-        osc.start(audioCtx.currentTime);
-        osc.stop(audioCtx.currentTime + 2.5);
-      } catch(e) {}
-    }
+    /* ==============================================================
+       起動
+       ============================================================== */
+    function init() {
+      // 前回の選択を戻す
+      const saved = store.get('osce.session', null);
+      if (saved && Array.isArray(saved.scenarios)) { session.scenarios = saved.scenarios; session.importedAt = saved.importedAt; }
+      const prefs = store.get('osce.prefs', {});
+      const manual = store.get('osce.manual', null);
+      if (manual) { $('m-situ').value = manual.situ || ''; $('m-patient').value = manual.patient || ''; $('m-supp').value = manual.supp || ''; }
+      const check = (name, value) => { const r = document.querySelector(`input[name="${name}"][value="${value}"]`); if (r) r.checked = true; };
+      if (prefs.preset) check('preset', prefs.preset);
+      if (prefs.mode) check('mode', prefs.mode);
+      buildScenarioOptions(prefs.scenario);
+      refreshImportStatus();
 
-    function formatTime(totalSec) {
-      const m = Math.floor(totalSec / 60).toString().padStart(2, '0');
-      const s = (totalSec % 60).toString().padStart(2, '0');
-      return `${m}:${s}`;
-    }
+      // 時間の種類を選んだ時点で音声を用意（このタップでiPhoneの音声許可も済ませる）
+      document.querySelectorAll('input[name="preset"]').forEach((r) => r.addEventListener('change', () => {
+        applySelection(); audio.load(state.preset); audio.unlock();
+      }));
+      $('manual').addEventListener('toggle', () => { if ($('manual').open) $('scenario-select').value = 'manual'; });
+      document.querySelectorAll('.chips button').forEach((b) => b.addEventListener('click', () => {
+        $('m-situ').value = b.dataset.fill; $('scenario-select').value = 'manual';
+      }));
+      ['m-situ', 'm-patient', 'm-supp'].forEach((id) => $(id).addEventListener('input', () => { $('scenario-select').value = 'manual'; }));
 
-    function updateDisplay(skipAudio = false) {
-      display.textContent = formatTime(elapsedSeconds);
-      
-      if (!skipAudio) {
-        if (elapsedSeconds === TRIG_10MIN) {
-          a10.currentTime = 0;
-          a10.play().catch(()=>{});
-        } else if (elapsedSeconds === TRIG_12MIN) {
-          a12.currentTime = 0;
-          a12.play().catch(()=>{});
+      $('pptx-file').addEventListener('change', async (e) => {
+        const file = e.target.files && e.target.files[0];
+        e.target.value = '';
+        if (!file) return;
+        importStatus('読み込み中…', '');
+        try {
+          session.scenarios = await pptx.parse(file);
+          session.importedAt = Date.now();
+          store.set('osce.session', session);
+          buildScenarioOptions('s0');
+          refreshImportStatus();
+        } catch (err) {
+          importStatus('読み込めませんでした：' + (err && err.message ? err.message : err), 'error');
         }
-      }
+      });
+      $('pptx-clear').addEventListener('click', () => {
+        session.scenarios = []; session.importedAt = null;
+        store.remove('osce.session');
+        buildScenarioOptions('none');
+        refreshImportStatus();
+      });
 
-      if (elapsedSeconds >= PHASE2_START_SEC && elapsedSeconds < TOTAL_SEC) {
-        if (elapsedSeconds === PHASE2_START_SEC && !skipAudio) {
-          phase2Block.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        }
-        phase1Block.classList.remove('active-block');
-        phase2Block.classList.add('active-block');
-        display.style.color = '#ffeb3b';
-      } else if (elapsedSeconds >= TOTAL_SEC) {
-        if (elapsedSeconds === TOTAL_SEC && !skipAudio) playEndChime();
-        display.style.color = '#f44336';
-      } else {
-        phase1Block.classList.add('active-block');
-        phase2Block.classList.remove('active-block');
-        display.style.color = '#ffffff';
-      }
+      $('go-timer').addEventListener('click', showTimerScreen);
+      guarded($('btn-back'), 'もう一度タップで戻る', () => timer.status === 'running' || timer.status === 'preparing', showSetupScreen);
+      guarded($('btn-reset'), 'もう一度タップ', () => timer.status === 'running' || timer.status === 'preparing', () => timer.reset());
+      $('btn-start').addEventListener('click', () => timer.toggle());
+      $('task-mini').addEventListener('click', () => peek.open());
+      $('task-panel').addEventListener('click', () => { if ($('task-panel').classList.contains('is-peek')) peek.close(); });
+      bindSeekButton($('btn-rewind'),  -1);
+      bindSeekButton($('btn-forward'), +1);
+
+      applySelection();
+      audio.load(state.preset);
+      renderTask();
+      timer.render();
     }
+    init();
 
-    function startSeek(delta) {
-      stopSeek();
-      seekTicks = 0;
-      elapsedSeconds = Math.max(0, Math.min(TOTAL_SEC, elapsedSeconds + delta));
-      updateDisplay(true);
+    /* ==============================================================
+       オフライン対応（Service Worker）
+       ============================================================== */
+    const offline = {
+      statusEl: $('offline-status'),
+      messages: {
+        checking:    'オフライン準備中…',
+        ready:       '✓ オフラインで使えます',
+        error:       'オフラインの準備に失敗しました。電波のある場所で開き直してください。',
+        unsupported: 'このブラウザではオフライン保存が使えません。',
+      },
+      show(state_) {
+        this.statusEl.dataset.state = state_;
+        this.statusEl.textContent = this.messages[state_];
+      },
+      // 保存の完了（activated）か失敗（redundant）を見届ける
+      watch(worker) {
+        if (!worker) return;
+        const check = () => {
+          if (worker.state === 'activated') this.show('ready');
+          if (worker.state === 'redundant') this.show('error');
+        };
+        worker.addEventListener('statechange', check);
+        check();
+      },
+      async init() {
+        // iPhone/iPadのSafariで、ホーム画面に追加していないときだけ案内を出す
+        const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) ||
+                      (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+        const isStandalone = window.navigator.standalone === true ||
+                             window.matchMedia('(display-mode: standalone)').matches;
+        $('offline-hint').hidden = !(isIOS && !isStandalone);
 
-      seekInterval = setInterval(() => {
-        seekTicks++;
-        let step = delta;
-        if (seekTicks > 15) step = delta * 15;
-        else if (seekTicks > 6) step = delta * 5;
-        
-        elapsedSeconds = Math.max(0, Math.min(TOTAL_SEC, elapsedSeconds + step));
-        updateDisplay(true);
-      }, 80);
-    }
-
-    function stopSeek() {
-      if (seekInterval) {
-        clearInterval(seekInterval);
-        seekInterval = null;
-      }
-    }
-
-    function bindSeekButton(btnId, delta) {
-      const btn = document.getElementById(btnId);
-      btn.addEventListener('touchstart', (e) => { e.preventDefault(); startSeek(delta); }, { passive: false });
-      btn.addEventListener('touchend', stopSeek);
-      btn.addEventListener('touchcancel', stopSeek);
-      btn.addEventListener('mousedown', () => startSeek(delta));
-      btn.addEventListener('mouseup', stopSeek);
-      btn.addEventListener('mouseleave', stopSeek);
-    }
-    bindSeekButton('rewindBtn', -1);
-    bindSeekButton('ffBtn', 1);
-
-    function jumpTo(phase) {
-      unlockAudio();
-      stopAllAudio();
-      clearInterval(timerInterval);
-
-      if (phase === 0) {
-        elapsedSeconds = 0;
-        updateDisplay(true);
-        if (isRunning) startCounting();
-      } else if (phase === 12) {
-        elapsedSeconds = TRIG_12MIN;
-        updateDisplay(false);
-        if (!isRunning) {
-          isRunning = true;
-        }
-        startCounting();
-      }
-    }
-
-    function startCounting() {
-      clearInterval(timerInterval);
-      timerInterval = setInterval(() => {
-        elapsedSeconds++;
-        updateDisplay(false);
-        if (elapsedSeconds >= TOTAL_Sem) { // 修正済み
-          clearInterval(timerInterval);
-          isRunning = false;
-          startBtn.textContent = '終了';
-          startBtn.classList.add('btn-disabled');
-          startBtn.disabled = true;
-        }
-      }, 1000);
-      startBtn.textContent = '一時停止';
-      startBtn.style.backgroundColor = '#ff9800';
-      startBtn.disabled = false;
-      startBtn.classList.remove('btn-disabled');
-    }
-
-    function toggleTimer() {
-      unlockAudio();
-      if (isRunning) {
-        clearInterval(timerInterval);
-        stopAllAudio();
-        startBtn.textContent = '再開';
-        startBtn.style.backgroundColor = '#007bff';
-        isRunning = false;
-      } else {
-        if (elapsedSeconds >= TOTAL_SEC) return;
-        isRunning = true;
-        
-        if (elapsedSeconds === 0) {
-          startBtn.textContent = '準備中...';
-          startBtn.classList.add('btn-disabled');
-          startBtn.disabled = true;
-          
-          aStart.currentTime = 0;
-          aStart.onended = () => {
-            if (isRunning) startCounting();
-          };
-          aStart.play().catch(() => {
-            startCounting();
+        if (!('serviceWorker' in navigator)) { this.show('unsupported'); return; }
+        try {
+          const reg = await navigator.serviceWorker.register('./sw.js');
+          if (reg.installing) this.watch(reg.installing);
+          else if (reg.waiting) this.watch(reg.waiting);
+          else if (reg.active) this.show('ready');
+          reg.addEventListener('updatefound', () => {
+            const w = reg.installing;
+            if (w && navigator.serviceWorker.controller) {
+              w.addEventListener('statechange', () => { if (w.state === 'redundant') this.show('error'); });
+            }
           });
-        } else {
-          startCounting();
+          if (navigator.storage && navigator.storage.persist) navigator.storage.persist().catch(() => {});
+        } catch (e) {
+          this.show('error');
         }
-      }
-    }
-
-    function resetTimer() {
-      clearInterval(timerInterval);
-      stopAllAudio();
-      isRunning = false;
-      elapsedSeconds = 0;
-      updateDisplay(true);
-      startBtn.textContent = 'スタート';
-      startBtn.disabled = false;
-      startBtn.classList.remove('btn-disabled');
-      startBtn.style.backgroundColor = '#28a745';
-      document.getElementById('text-section').scrollTop = 0;
-    }
+      },
+    };
+    window.addEventListener('load', () => offline.init());
   </script>
 </body>
 </html>
