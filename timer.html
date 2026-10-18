@@ -356,6 +356,8 @@
       align-items: center; gap: 10px;
     }
     body[data-mode="exam"][data-stage="run"] #task-mini.has-info { display: flex; }
+    /* 「戻る」ボタンを隠さないよう、縦向きではその下に置く */
+    body[data-mode="exam"][data-stage="run"] #task-mini.has-info { top: calc(54px + env(safe-area-inset-top)); }
     #task-mini.has-info > svg, #task-mini.has-info > .mini-label { display: none; }
     #task-mini.has-info .mini-info { display: block; flex: 1; min-width: 0; }
     #task-mini .mini-info b { display: block; font-weight: 700; }
@@ -406,6 +408,8 @@
       body[data-mode="study"] #timer-display { font-size: min(13.5vw, 40vh); }
       #timer-section { padding-top: calc(40px + env(safe-area-inset-top)); padding-right: env(safe-area-inset-right); }
       /* 状況・患者情報のカードを残すぶん、数字を少し下げて小さくする */
+      body[data-mode="exam"][data-stage="run"] #task-mini.has-info { top: calc(10px + env(safe-area-inset-top)); left: calc(118px + env(safe-area-inset-left)); max-width: 440px; }
+      body[data-mode="exam"][data-stage="run"]:has(#task-mini.has-info) #awake-badge { left: auto; right: calc(14px + env(safe-area-inset-right)); transform: none; }
       body[data-mode="exam"][data-stage="run"]:has(#task-mini.has-info) #timer-section { padding-top: calc(84px + env(safe-area-inset-top)); }
       body[data-mode="exam"][data-stage="run"]:has(#task-mini.has-info) #timer-display { font-size: min(30vw, 42vh); }
     }
