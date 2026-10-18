@@ -214,6 +214,7 @@
         grid-template-columns: minmax(0, 1fr);
         grid-template-areas: "timer";
       }
+      body[data-stage="read"] #task-panel { padding-right: 300px; padding-bottom: 18px; }
     }
 
     /* ============================================================
@@ -355,6 +356,33 @@
       padding: 8px 20px; font-size: 0.9rem; font-weight: 700; color: #fff;
       background: var(--btn-reset); border: none; border-radius: 20px;
     }
+    .btn-skip { display: none; padding: 12px 16px; background: var(--btn-seek); }
+    #read-caption { display: none; font-size: 0.8rem; color: #aaa; }
+
+    /* 入室から：課題文を全面に出し、タイマーは隅に小さく置く（読む時間） */
+    body[data-stage="read"] #app,
+    body[data-mode="exam"][data-stage="read"] #app {
+      grid-template-columns: minmax(0, 1fr);
+      grid-template-rows: minmax(0, 1fr);
+      grid-template-areas: "task";
+    }
+    body[data-stage="read"] #task-panel { padding-bottom: 170px; }
+    body[data-stage="read"] #timer-section {
+      position: fixed; z-index: 30;
+      right: calc(12px + env(safe-area-inset-right)); bottom: calc(12px + env(safe-area-inset-bottom));
+      padding: 10px 14px 12px; border-radius: 18px;
+      background: rgba(0, 0, 0, 0.94); border: 1px solid #3a3d45;
+      box-shadow: 0 6px 24px rgba(0, 0, 0, 0.45);
+    }
+    body[data-stage="read"] #read-caption { display: block; }
+    body[data-stage="read"] #timer-display { font-size: min(13vw, 9vh); margin-bottom: 0; }
+    body[data-stage="read"] #controls { margin: 4px 0 6px; }
+    body[data-stage="read"] .btn-seek,
+    body[data-stage="read"] .btn-back,
+    body[data-stage="read"] #awake-badge { display: none; }
+    body[data-stage="read"] .btn-skip { display: inline-block; }
+    body[data-stage="read"] .btn-start { width: auto; min-width: 100px; padding: 10px 16px; font-size: 1rem; }
+    body[data-stage="read"] .btn-skip { font-size: 1rem; }
     .btn-back.is-armed, .btn-reset.is-armed { color: #fff; background: #b00020; border-color: #b00020; }
   </style>
 </head>
@@ -373,7 +401,6 @@
       <div class="seg" id="seg-preset">
         <label><input type="radio" name="preset" value="postcc16" checked><span>PostCC<small>16分</small></span></label>
         <label><input type="radio" name="preset" value="precc10"><span>PreCC<small>10分</small></span></label>
-        <label><input type="radio" name="preset" value="precc6"><span>PreCC<small>6分</small></span></label>
       </div>
     </fieldset>
 
@@ -382,6 +409,14 @@
       <div class="seg" id="seg-mode">
         <label><input type="radio" name="mode" value="exam" checked><span>試験想定<small>開始後はタイマーだけ</small></span></label>
         <label><input type="radio" name="mode" value="study"><span>学習会想定<small>場面を常に表示</small></span></label>
+      </div>
+    </fieldset>
+
+    <fieldset class="field" id="field-entry">
+      <legend>はじまり</legend>
+      <div class="seg" id="seg-entry">
+        <label><input type="radio" name="entry" value="start" checked><span>開始から<small>スタートで試験開始</small></span></label>
+        <label><input type="radio" name="entry" value="room"><span>入室から<small>課題文を1分読んでから開始</small></span></label>
       </div>
     </fieldset>
 
@@ -427,6 +462,7 @@
     <section id="timer-section">
       <button type="button" class="btn-back" id="btn-back">◀ 戻る</button>
       <div id="awake-badge" aria-live="off"></div>
+      <div id="read-caption">課題文を読む時間</div>
       <div id="timer-display" aria-live="off">00:00</div>
       <div id="controls">
         <button type="button" class="btn-seek" id="btn-rewind" aria-label="巻き戻し（長押しで加速）">
@@ -436,6 +472,7 @@
         <button type="button" class="btn-seek" id="btn-forward" aria-label="早送り（長押しで加速）">
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M13 6v12l9-6zM3 6v12l9-6z"/></svg>
         </button>
+        <button type="button" class="btn-skip" id="btn-skip">開始へ</button>
       </div>
       <div><button type="button" class="btn-reset" id="btn-reset">リセット</button></div>
     </section>
@@ -493,20 +530,10 @@
           { id: 'end',   file: 'precc-end.mp3',   kind: 'startAt', at: 10 * 60 },               // 「試験を終了してください」
         ],
       },
-      precc6: {
-        label: 'PreCC 6分',
-        totalSec: 6 * 60,
-        warnSec: 4 * 60,
-        defaultNote: '',
-        blocks: [{ id: 'interview', title: '医療面接と身体診察', minutes: 6, startSec: 0, body: '' }],
-        cues: [
-          { id: 'start', file: 'precc-start.mp3', kind: 'intro' },
-          { id: 'warn',  file: 'precc-2min.mp3',  kind: 'endAt', at: 4 * 60, lead: 3 },
-          { id: 'end',   file: 'precc-end.mp3',   kind: 'startAt', at: 6 * 60 },
-        ],
-      },
     };
 
+    const READ_FILE = 'reading_assignment.mp3';   // 入室の案内「課題文を読み、試験開始の合図を待ってください」（読む時間の頭で流す）
+    const READ_SEC = 60;         // 「入室から」で、課題文を読む時間
     const PEEK_SEC = 5;          // 課題文を拡大して見せる秒数
     const ARM_MS = 3000;         // 「もう一度タップ」の待ち時間
 
@@ -530,6 +557,7 @@
     const state = {
       preset: PRESETS.postcc16,
       mode: 'exam',
+      readSec: 0,          // 課題文を読む時間（0なら「開始から」）
       scenario: null,      // 表示する課題文（なければ null）
     };
 
@@ -543,7 +571,7 @@
       // 時間の種類を選んだときに、その音声だけを用意する
       load(preset) {
         this.els = {};
-        preset.cues.forEach((c) => {
+        preset.cues.concat([{ file: READ_FILE }]).forEach((c) => {
           if (this.els[c.file]) return;
           const a = new Audio();
           a.preload = 'auto';
@@ -674,6 +702,9 @@
       fired: new Set(),     // 音声を流し終えた（または通り過ぎた）ものの id
       tickId: null,
       lastActive: -1,
+      readBase: 0,          // 読む時間の残り（ミリ秒）の基準
+      readAnchor: 0,
+      readLeftMs: 0,
 
       get total() { return state.preset.totalSec; },
       get elapsed() { return Math.floor(this.elapsedMs / 1000); },
@@ -683,7 +714,8 @@
       render() {
         const P = state.preset;
         const e = this.elapsed;
-        $('timer-display').textContent = formatTime(e);
+        const reading = ['readintro', 'reading', 'readpaused'].includes(this.status);
+        $('timer-display').textContent = reading ? formatTime(Math.ceil(this.readLeftMs / 1000)) : formatTime(e);
 
         const finished = e >= P.totalSec;
         let idx = 0;
@@ -693,7 +725,7 @@
                     : P.blocks[idx].id === 'report' ? 'report'
                     : 'interview';
         document.body.dataset.phase = phase;
-        document.body.dataset.stage = (this.status === 'idle' && this.elapsedMs === 0) ? 'ready' : 'run';
+        document.body.dataset.stage = reading ? 'read' : (this.status === 'idle' && this.elapsedMs === 0) ? 'ready' : 'run';
         if (document.body.dataset.stage === 'ready') peek.close();
 
         document.querySelectorAll('.instruction-block').forEach((node, i) => {
@@ -708,11 +740,11 @@
           this.lastActive = idx;
         }
 
-        const labels = { idle: 'スタート', preparing: '準備中...', running: '一時停止', paused: '再開', finished: '終了' };
+        const labels = { idle: state.readSec ? '入室' : 'スタート', preparing: '準備中...', running: '一時停止', paused: '再開', finished: '終了', reading: '一時停止', readpaused: '再開', readintro: '案内中...' };
         const btn = $('btn-start');
         btn.textContent = labels[this.status];
-        btn.dataset.state = this.status;
-        btn.disabled = this.status === 'preparing' || this.status === 'finished';
+        btn.dataset.state = this.status === 'reading' ? 'running' : this.status === 'readpaused' ? 'paused' : this.status === 'readintro' ? 'preparing' : this.status;
+        btn.disabled = this.status === 'preparing' || this.status === 'readintro' || this.status === 'finished';
       },
 
       // 通り過ぎた音声は「流し終えた」ことにする（早送りで一気に鳴らないように）
@@ -736,6 +768,12 @@
 
       // --- 時計を進める（端末の時刻を基準にするので、ずれにくい） ---
       tick() {
+        if (this.status === 'reading') {
+          this.readLeftMs = Math.max(0, this.readBase - (performance.now() - this.readAnchor));
+          if (this.readLeftMs <= 0) { this.stopTicking(); this.playStartVoice(); }   // 読む時間が終わったら、開始の声へ
+          else this.render();
+          return;
+        }
         if (this.status !== 'running') return;
         const totalMs = this.total * 1000;
         this.elapsedMs = Math.min(totalMs, this.baseMs + (performance.now() - this.anchorMs));
@@ -756,6 +794,17 @@
       startTicking() { this.stopTicking(); this.tickId = setInterval(() => this.tick(), 100); },
       stopTicking() { if (this.tickId) { clearInterval(this.tickId); this.tickId = null; } },
 
+      // 入室：案内の声を流しながら、課題文を読む時間（声も含めて1分）のカウントダウンを始める
+      beginRead() {
+        this.status = 'reading';
+        this.readBase = state.readSec * 1000;
+        this.readLeftMs = this.readBase;
+        this.readAnchor = performance.now();
+        this.startTicking();
+        this.render();
+        audio.play(READ_FILE).catch(() => {});
+      },
+
       begin() {
         this.status = 'running';
         this.baseMs = this.elapsedMs;
@@ -774,7 +823,17 @@
       // --- 操作 ---
       toggle() {
         audio.unlock();
-        if (this.status === 'running') {
+        if (this.status === 'reading') {
+          this.readBase = this.readLeftMs;
+          this.stopTicking();
+          this.status = 'readpaused';
+          this.render();
+        } else if (this.status === 'readpaused') {
+          this.readAnchor = performance.now();
+          this.status = 'reading';
+          this.startTicking();
+          this.render();
+        } else if (this.status === 'running') {
           this.stopTicking();
           audio.stopAll();
           awake.stop();
@@ -782,9 +841,19 @@
           this.render();
         } else if (this.status === 'idle' || this.status === 'paused') {
           awake.start();                       // 押した瞬間（iPhoneが許す瞬間）に始める
-          if (this.elapsedMs === 0) this.playStartVoice();
+          if (this.elapsedMs === 0 && this.status === 'idle' && state.readSec > 0) this.beginRead();
+          else if (this.elapsedMs === 0) this.playStartVoice();
           else this.begin();
         }
+      },
+
+      // 読む時間を飛ばして、すぐ開始する
+      skipRead() {
+        audio.unlock();
+        if (!['readintro', 'reading', 'readpaused'].includes(this.status)) return;
+        this.stopTicking();
+        audio.stopAll();
+        this.playStartVoice();
       },
 
       // 開始音声が終わってからカウントを始める
@@ -805,6 +874,7 @@
         audio.stopAll();
         awake.stop();
         this.status = 'idle';
+        this.readLeftMs = 0;
         this.elapsedMs = 0;
         this.baseMs = 0;
         this.fired = new Set();
@@ -956,8 +1026,11 @@
         const iMed = paras.findIndex((t) => t.includes('医療面接'));
         const iPat = paras.findIndex((t, i) => i < iMed && /^患者/.test(t));
         const situation = paras.slice(0, Math.max(iPat, 0));
-        const patient = iPat >= 0 ? paras[iPat] : '';
+        let patient = iPat >= 0 ? paras[iPat] : '';
         const supplement = paras.slice(iPat + 1, iMed);
+        // 「患者 ○○ さん（68歳男性） 右踵骨骨折で…」のように、同じ行に補足が続く資料は、年齢の括弧のあとを補足として分ける
+        const sp = /^(.*?（[^）]*(?:歳|か月|ヶ月|ヵ月|週|日)[^）]*）)\s*(.+)$/.exec(patient);
+        if (sp) { patient = sp[1]; supplement.unshift(sp[2]); }
 
         // 末尾の注意書き：報告（または面接）の説明文のあとに残った段落
         let end = -1;
@@ -1062,13 +1135,16 @@
       const mode = document.querySelector('input[name="mode"]:checked').value;
       const presetKey = document.querySelector('input[name="preset"]:checked').value;
       const v = $('scenario-select').value;
+      const entry = document.querySelector('input[name="entry"]:checked').value;
       state.mode = mode;
-      state.preset = PRESETS[presetKey];
+      state.readSec = (mode === 'exam' && entry === 'room') ? READ_SEC : 0;
+      $('field-entry').hidden = mode !== 'exam';
+      state.preset = PRESETS[presetKey] || PRESETS.postcc16;
       state.scenario = v === 'manual' ? manualScenario()
                     : /^s\d+$/.test(v) ? session.scenarios[Number(v.slice(1))] || null
                     : null;
       document.body.dataset.mode = mode;
-      store.set('osce.prefs', { preset: presetKey, mode, scenario: v });
+      store.set('osce.prefs', { preset: presetKey, mode, entry, scenario: v });
       store.set('osce.manual', { situ: $('m-situ').value, patient: $('m-patient').value, supp: $('m-supp').value });
     }
 
@@ -1151,6 +1227,7 @@
       const check = (name, value) => { const r = document.querySelector(`input[name="${name}"][value="${value}"]`); if (r) r.checked = true; };
       if (prefs.preset) check('preset', prefs.preset);
       if (prefs.mode) check('mode', prefs.mode);
+      if (prefs.entry) check('entry', prefs.entry);
       buildScenarioOptions(prefs.scenario);
       refreshImportStatus();
 
@@ -1158,6 +1235,7 @@
       document.querySelectorAll('input[name="preset"]').forEach((r) => r.addEventListener('change', () => {
         applySelection(); audio.load(state.preset); audio.unlock();
       }));
+      document.querySelectorAll('input[name="mode"], input[name="entry"]').forEach((r) => r.addEventListener('change', applySelection));
       $('manual').addEventListener('toggle', () => { if ($('manual').open) $('scenario-select').value = 'manual'; });
       document.querySelectorAll('.chips button').forEach((b) => b.addEventListener('click', () => {
         $('m-situ').value = b.dataset.fill; $('scenario-select').value = 'manual';
@@ -1187,9 +1265,10 @@
       });
 
       $('go-timer').addEventListener('click', showTimerScreen);
-      guarded($('btn-back'), 'もう一度タップで戻る', () => timer.status === 'running' || timer.status === 'preparing', showSetupScreen);
-      guarded($('btn-reset'), 'もう一度タップ', () => timer.status === 'running' || timer.status === 'preparing', () => timer.reset());
+      guarded($('btn-back'), 'もう一度タップで戻る', () => ['running', 'preparing', 'readintro', 'reading', 'readpaused'].includes(timer.status), showSetupScreen);
+      guarded($('btn-reset'), 'もう一度タップ', () => ['running', 'preparing', 'readintro', 'reading', 'readpaused'].includes(timer.status), () => timer.reset());
       $('btn-start').addEventListener('click', () => timer.toggle());
+      $('btn-skip').addEventListener('click', () => timer.skipRead());
       $('task-mini').addEventListener('click', () => peek.open());
       $('task-panel').addEventListener('click', () => { if ($('task-panel').classList.contains('is-peek')) peek.close(); });
       bindSeekButton($('btn-rewind'),  -1);

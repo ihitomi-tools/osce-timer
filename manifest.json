@@ -2,7 +2,7 @@
   "id": "./timer.html",
   "name": "OSCE 学習会タイマー",
   "short_name": "OSCEタイマー",
-  "description": "OSCE学習会用タイマー（PostCC 16分／PreCC 10分・6分、オフライン対応）",
+  "description": "OSCE学習会用タイマー（PostCC 16分／PreCC 10分、オフライン対応）",
   "lang": "ja",
   "start_url": "./timer.html",
   "scope": "./",

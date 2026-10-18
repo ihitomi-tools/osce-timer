@@ -13,7 +13,7 @@
    - ファイルを追加・削除したら、PRECACHE の一覧も直してください。
    ============================================================== */
 
-const VERSION = 'v4';
+const VERSION = 'v5';
 const CACHE_PREFIX = 'osce-timer-';
 const CACHE_NAME = CACHE_PREFIX + VERSION;
 
@@ -30,6 +30,7 @@ const PRECACHE = [
   './precc-start.mp3',
   './precc-2min.mp3',
   './precc-end.mp3',
+  './reading_assignment.mp3',
   './BIZUDGothic-Regular.woff2',
   './BIZUDGothic-Bold.woff2',
   './icon-192.png',
