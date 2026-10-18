@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <title>OSCE 学習会タイマー</title>
   <meta name="color-scheme" content="light dark">
+  <script>try { var t = localStorage.getItem('osce.theme'); if (t === 'light' || t === 'dark') document.documentElement.dataset.theme = t; } catch (e) {}</script>
   <meta name="theme-color" content="#000000">
 
   <!-- ホーム画面に追加したとき（PWA）の設定 -->
@@ -55,6 +56,12 @@
       --timer-warn: #ffb300;
       --timer-phase2: #ffeb3b;
       --timer-end: #f44336;
+      --timer-jump-line: #4a4e58;
+      --timer-sub: #aaa;          /* 戻るボタンなどの文字 */
+      --timer-line: #555;         /* 同じく枠線 */
+      --timer-faint: #6d727c;     /* 「画面オン」の表示 */
+      --timer-card: rgba(0, 0, 0, 0.96);  /* 読む時間の浮かぶカード */
+      --mini-bg: #15171b; --mini-line: #3a3d45; --mini-text: #e6e8ec; --mini-sub: #8a8f99;
 
       --btn-start: #3d5fc4;
       --btn-pause: #c77d12;
@@ -64,8 +71,38 @@
       --btn-seek-pressed: #454955;
       --btn-disabled: #6c757d;
     }
+    /* ダークの色。「端末に合わせる」のときは端末の設定、「ダーク」を選んだときは常にこちら */
+    :root[data-theme="dark"] {
+      color-scheme: dark;
+      --bg: #0e1013;
+      --surface: #171a1f;
+      --surface-pressed: #20242b;
+      --text: #e8e9ec;
+      --text-sub: #9aa0aa;
+      --line: #2b2f37;
+      --accent: #9db0e6;
+      --accent-soft: #1a2236;
+      --on-accent: #0e1013;
+      --note: #ff9a78;
+    }
+    :root[data-theme="light"] { color-scheme: light; }
+    /* ライトのときは、タイマー部分も白地に（黄色・赤は白地で読める濃さに）。ダークのときは黒地 */
+    :root[data-theme="light"] {
+      --timer-bg: #ffffff; --timer-text: #1d2026; --timer-phase1: #14161a;
+      --timer-warn: #e08a00; --timer-phase2: #c99500; --timer-end: #d93025;
+      --timer-jump-line: #aeb3bb; --timer-sub: #5b606a; --timer-line: #b9bdc5; --timer-faint: #8a8f99; --timer-card: rgba(255, 255, 255, 0.97);
+      --mini-bg: #ffffff; --mini-line: #cfd2d8; --mini-text: #1d2026; --mini-sub: #6a6f78;
+    }
+    @media (prefers-color-scheme: light) {
+      :root:not([data-theme="dark"]) {
+      --timer-bg: #ffffff; --timer-text: #1d2026; --timer-phase1: #14161a;
+      --timer-warn: #e08a00; --timer-phase2: #c99500; --timer-end: #d93025;
+      --timer-jump-line: #aeb3bb; --timer-sub: #5b606a; --timer-line: #b9bdc5; --timer-faint: #8a8f99; --timer-card: rgba(255, 255, 255, 0.97);
+      --mini-bg: #ffffff; --mini-line: #cfd2d8; --mini-text: #1d2026; --mini-sub: #6a6f78;
+    }
+    }
     @media (prefers-color-scheme: dark) {
-      :root {
+      :root:not([data-theme="light"]) {
         --bg: #0e1013;
         --surface: #171a1f;
         --surface-pressed: #20242b;
@@ -99,6 +136,15 @@
     button, input, select, textarea { font-family: inherit; }
     button { cursor: pointer; }
     [hidden] { display: none !important; }
+
+    /* 設定画面の右上：ライト／ダークの切り替え（控えめな小さいスイッチ） */
+    #theme-sw {
+      position: absolute; z-index: 3; padding: 2px; border-radius: 999px; background: transparent;
+      top: calc(14px + env(safe-area-inset-top)); right: calc(14px + env(safe-area-inset-right));
+    }
+    #theme-sw::before { top: 2px; bottom: 2px; left: 2px; width: calc((100% - 4px) / 2); border-radius: 999px; box-shadow: none; }
+    #theme-sw span { padding: 3px 10px; font-size: 0.7rem; font-weight: 500; border-radius: 999px; color: var(--text-sub); }
+    #theme-sw input:checked + span { color: var(--on-accent); font-weight: 700; }
 
     /* 画面を消さないための、ほぼ見えない小さな動画 */
     #awake-video {
@@ -342,17 +388,17 @@
       display: none; position: fixed; z-index: 40;
       top: calc(10px + env(safe-area-inset-top)); right: calc(10px + env(safe-area-inset-right));
       width: 64px; padding: 6px 4px 5px;
-      font-size: 0.62rem; line-height: 1.3; text-align: center; color: #bbb;
-      background: #15171b; border: 1px solid #3a3d45; border-radius: 10px;
+      font-size: 0.62rem; line-height: 1.3; text-align: center; color: var(--mini-text);
+      background: var(--mini-bg); border: 1px solid var(--mini-line); border-radius: 10px;
     }
     #task-mini svg { display: block; width: 22px; height: 22px; margin: 0 auto 2px; fill: currentColor; opacity: 0.8; }
-    #task-mini .mini-tag { display: block; color: #8a8f99; }
+    #task-mini .mini-tag { display: block; color: var(--mini-sub); }
     body[data-mode="exam"][data-stage="run"] #task-mini { display: block; }
     /* 状況・患者情報があるときは、アイコンの代わりにその2行を残す（タップで全文） */
     #task-mini .mini-info { display: none; }
     #task-mini.has-info {
       display: none; left: calc(10px + env(safe-area-inset-left)); right: calc(10px + env(safe-area-inset-right));
-      width: auto; max-width: 520px; padding: 9px 12px 9px 14px; text-align: left; font-size: 0.95rem; line-height: 1.45; color: #e6e8ec;
+      width: auto; max-width: 520px; padding: 9px 12px 9px 14px; text-align: left; font-size: 0.95rem; line-height: 1.45; color: var(--mini-text);
       align-items: center; gap: 10px;
     }
     body[data-mode="exam"][data-stage="run"] #task-mini.has-info { display: flex; }
@@ -361,7 +407,7 @@
     #task-mini.has-info > svg, #task-mini.has-info > .mini-label { display: none; }
     #task-mini.has-info .mini-info { display: block; flex: 1; min-width: 0; }
     #task-mini .mini-info b { display: block; font-weight: 700; }
-    #task-mini .mini-more { display: none; flex: none; font-size: 0.68rem; line-height: 1.2; color: #8a8f99; text-align: center; }
+    #task-mini .mini-more { display: none; flex: none; font-size: 0.68rem; line-height: 1.2; color: var(--mini-sub); text-align: center; }
     #task-mini.has-info .mini-more { display: block; }
     #task-mini .mini-more svg { display: block; width: 20px; height: 20px; margin: 0 auto 2px; fill: currentColor; opacity: 0.8; }
     body.peeking #task-mini { display: none !important; }
@@ -383,13 +429,13 @@
     .btn-back {
       position: absolute;
       top: calc(12px + env(safe-area-inset-top)); left: calc(12px + env(safe-area-inset-left));
-      padding: 5px 12px; font-size: 0.85rem; color: #aaa;
-      background: transparent; border: 1px solid #555; border-radius: 15px;
+      padding: 5px 12px; font-size: 0.85rem; color: var(--timer-sub);
+      background: transparent; border: 1px solid var(--timer-line); border-radius: 15px;
     }
     #awake-badge {
       position: absolute;
       top: calc(16px + env(safe-area-inset-top)); left: 50%; transform: translateX(-50%);
-      font-size: 0.7rem; color: #6d727c; white-space: nowrap;
+      font-size: 0.7rem; color: var(--timer-faint); white-space: nowrap;
     }
 
     #timer-display {
@@ -420,7 +466,7 @@
     #btn-view {
       display: none; position: absolute; z-index: 5;
       top: calc(12px + env(safe-area-inset-top)); right: calc(12px + env(safe-area-inset-right));
-      padding: 3px; font-size: 0.8rem; color: #aaa; background: transparent; border: 1px solid #555; border-radius: 15px;
+      padding: 3px; font-size: 0.8rem; color: var(--timer-sub); background: transparent; border: 1px solid var(--timer-line); border-radius: 15px;
     }
     #btn-view span { display: inline-block; padding: 3px 10px; border-radius: 12px; transition: background 0.2s ease, color 0.2s ease; }
     body[data-mode="study"][data-view="text"] #btn-view span:first-child,
@@ -453,7 +499,7 @@
     .btn-seek svg { width: 26px; height: 26px; fill: currentColor; pointer-events: none; }
 
     /* 30秒ずつ戻る／進む（学習会仕様のときだけ表示） */
-    #controls .btn-jump { display: none; width: 52px; height: 46px; padding: 0; background: transparent; border: 1px solid #4a4e58; border-radius: 30px; font-variant-numeric: tabular-nums; font-size: 1rem; }
+    #controls .btn-jump { display: none; width: 52px; height: 46px; padding: 0; background: transparent; color: var(--timer-text); border: 1px solid var(--timer-jump-line); border-radius: 30px; font-variant-numeric: tabular-nums; font-size: 1rem; }
     .btn-jump:active { background: var(--btn-seek-pressed); }
     body[data-mode="study"]:not([data-stage="read"]) #controls .btn-jump { display: block; }
     body[data-mode="study"]:not([data-stage="read"]) #controls button { margin: 0 3px; }
@@ -477,7 +523,7 @@
       background: var(--btn-reset); border: none; border-radius: 20px;
     }
     .btn-skip { display: none; padding: 12px 16px; background: var(--btn-seek); }
-    #read-caption { display: none; font-size: 0.8rem; color: #aaa; }
+    #read-caption { display: none; font-size: 0.8rem; color: var(--timer-sub); }
 
     /* 入室から：課題文を全面に出し、タイマーは隅に小さく置く（読む時間） */
     body[data-stage="read"] #app,
@@ -491,7 +537,7 @@
       position: fixed; z-index: 30;
       right: calc(12px + env(safe-area-inset-right)); bottom: calc(12px + env(safe-area-inset-bottom));
       padding: 10px 14px 12px; border-radius: 18px;
-      background: rgba(0, 0, 0, 0.96); border: 1px solid #3a3d45;
+      background: var(--timer-card); border: 1px solid var(--mini-line);
       box-shadow: 0 8px 28px rgba(0, 0, 0, 0.4);
     }
     body[data-stage="read"] #read-caption { display: block; }
@@ -533,6 +579,10 @@
 
   <!-- ===================== 設定画面 ===================== -->
   <main id="setup-screen">
+   <div class="seg" id="theme-sw" role="radiogroup" aria-label="表示の明るさ">
+     <label><input type="radio" name="theme" value="light"><span>ライト</span></label>
+     <label><input type="radio" name="theme" value="dark"><span>ダーク</span></label>
+   </div>
    <div class="setup-inner">
     <header class="setup-head">
       <p class="eyebrow">OSCE</p>
@@ -1657,6 +1707,16 @@
         $('m-age').value = manual.age || ''; $('m-sex').value = manual.sex === '男性' ? '男性' : '女性';
       }
       const check = (name, value) => { const r = document.querySelector(`input[name="${name}"][value="${value}"]`); if (r) r.checked = true; };
+      // ライト／ダーク：最初は端末の設定のとおり。スイッチを触ったら、その選択を端末に覚えておく
+      const mqDark = window.matchMedia('(prefers-color-scheme: dark)');
+      const effTheme = () => document.documentElement.dataset.theme || (mqDark.matches ? 'dark' : 'light');
+      const showTheme = () => { const r = document.querySelector(`input[name="theme"][value="${effTheme()}"]`); if (r) r.checked = true; };
+      showTheme();
+      document.querySelectorAll('input[name="theme"]').forEach((r) => r.addEventListener('change', () => {
+        document.documentElement.dataset.theme = r.value;
+        try { localStorage.setItem('osce.theme', r.value); } catch (e) { /* 保存できなくても動作は続ける */ }
+      }));
+      if (mqDark.addEventListener) mqDark.addEventListener('change', showTheme);
       document.body.dataset.view = prefs.view === 'timer' ? 'timer' : 'text';
       $('btn-view').addEventListener('click', () => {
         document.body.dataset.view = document.body.dataset.view === 'timer' ? 'text' : 'timer';
