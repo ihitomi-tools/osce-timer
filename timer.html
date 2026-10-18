@@ -1022,7 +1022,6 @@
       all() { return this.run('readonly', (st) => st.getAll()).then((v) => v || []); },
     };
     // 通話用の音声処理（エコー除去など）を切って開く。iPhoneで、録音中にスピーカーの音が小さくなるのを避けるため
-    const MIC = { audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false } };
     const REC_OK = !!(window.indexedDB && window.MediaRecorder && navigator.mediaDevices && navigator.mediaDevices.getUserMedia);
 
     const rec = {
@@ -1039,7 +1038,7 @@
       async enable() {
         if (!REC_OK) { this.message('この端末では録音を使えません'); return false; }
         try {
-          const s = await navigator.mediaDevices.getUserMedia(MIC);
+          const s = await navigator.mediaDevices.getUserMedia({ audio: true });
           s.getTracks().forEach((t) => t.stop());
           if (navigator.storage && navigator.storage.persist) navigator.storage.persist().catch(() => {});
           this.on = true; this.message('');
@@ -1061,7 +1060,7 @@
         if (this.starting) return;
         this.starting = true;
         try {
-          this.stream = await navigator.mediaDevices.getUserMedia(MIC);
+          this.stream = await navigator.mediaDevices.getUserMedia({ audio: true });
           const type = ['audio/mp4', 'audio/webm;codecs=opus', 'audio/webm', 'audio/ogg'].find((t) => MediaRecorder.isTypeSupported && MediaRecorder.isTypeSupported(t));
           this.mr = type ? new MediaRecorder(this.stream, { mimeType: type }) : new MediaRecorder(this.stream);
           this.chunks = []; this.accumMs = 0; this.segStart = performance.now();
