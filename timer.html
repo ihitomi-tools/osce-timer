@@ -214,7 +214,6 @@
         grid-template-columns: minmax(0, 1fr);
         grid-template-areas: "timer";
       }
-      body[data-stage="read"] #task-panel { padding-right: 300px; padding-bottom: 18px; }
     }
 
     /* ============================================================
@@ -231,7 +230,7 @@
     }
     body[data-mode="study"] #task-panel { padding-top: 14px; font-size: clamp(14px, 3.8vw, 20px); }
     @media (orientation: landscape) and (min-width: 640px) {
-      #task-panel { font-size: clamp(14px, 2.3vw, 24px); padding-top: calc(16px + env(safe-area-inset-top)); }
+      #task-panel { font-size: clamp(13px, 1.85vw, 22px); padding-top: calc(16px + env(safe-area-inset-top)); }
       body[data-mode="study"] #task-panel { font-size: clamp(14px, 2.1vw, 22px); }
     }
 
@@ -262,6 +261,29 @@
     body[data-mode="study"] .instruction-block:active { transform: scale(0.98); background: var(--surface-pressed); }
     body[data-mode="study"] .instruction-block.is-active { opacity: 1; background: var(--accent-soft); border-left-color: var(--accent); }
 
+    /* 試験想定：パワーポイントの課題文スライドのように、箇条書きで大きく表示（シナリオ番号は出さない） */
+    body[data-mode="exam"] .task-tag, body[data-mode="exam"] .mini-tag { display: none; }
+    body[data-mode="exam"] #task-body { line-height: 1.55; }
+    body[data-mode="exam"] #task-body p,
+    body[data-mode="exam"] .block-title,
+    body[data-mode="exam"] .block-text,
+    body[data-mode="exam"] .block-body li { position: relative; }
+    body[data-mode="exam"] .t-situ { margin: 0 0 0.3em; padding-left: 0.9em; font-size: 1.15em; font-weight: 400; }
+    body[data-mode="exam"] .t-patient,
+    body[data-mode="exam"] .t-supp { margin: 0 0 0.3em; padding-left: 2.1em; font-weight: 400; color: var(--text); }
+    body[data-mode="exam"] .t-note { margin: 1.3em 0 0 !important; padding-left: 0.9em; font-size: 1.1em; color: var(--text); }
+    body[data-mode="exam"] .t-situ::before, body[data-mode="exam"] .t-note::before,
+    body[data-mode="exam"] .block-title::before { content: "•"; position: absolute; left: 0; }
+    body[data-mode="exam"] .t-patient::before, body[data-mode="exam"] .t-supp::before,
+    body[data-mode="exam"] .block-text::before { content: "•"; position: absolute; left: 1.1em; }
+    body[data-mode="exam"] .instruction-block { margin: 1.5em 0 0; padding: 0; background: none; box-shadow: none; border-left: 0; border-radius: 0; }
+    body[data-mode="exam"] .block-title { justify-content: flex-start; gap: 2.2em; margin: 0 0 0.3em; padding-left: 0.9em; font-size: 1.15em; font-weight: 400; color: var(--text); }
+    body[data-mode="exam"] .block-body { font-size: 1em; }
+    body[data-mode="exam"] .block-text { padding-left: 2.1em; margin-bottom: 0.2em; }
+    body[data-mode="exam"] .block-body ul { margin: 0; padding: 0; list-style: none; }
+    body[data-mode="exam"] .block-body li { margin: 0 0 0.2em; padding-left: 2.1em; }
+    body[data-mode="exam"] .block-body li::before { content: "•"; position: absolute; left: 1.1em; }
+
     /* 試験想定・開始後：隅の小さなカード → タップで数秒だけ拡大 */
     body[data-mode="exam"][data-stage="run"] #task-panel { display: none; }
     body[data-mode="exam"][data-stage="run"] #task-panel.is-peek {
@@ -269,6 +291,11 @@
       inset: calc(10px + env(safe-area-inset-top)) calc(10px + env(safe-area-inset-right)) calc(10px + env(safe-area-inset-bottom)) calc(10px + env(safe-area-inset-left));
       border-radius: 16px; box-shadow: 0 12px 48px rgba(0, 0, 0, 0.7);
       animation: pop 0.2s ease-out;
+    }
+    @media (orientation: landscape) and (min-width: 640px) {
+      body[data-mode="exam"] #task-body { line-height: 1.4; }
+      body[data-mode="exam"] .instruction-block { margin-top: 0.9em; }
+      body[data-mode="exam"] .t-note { margin-top: 0.8em !important; }
     }
     @keyframes pop { from { transform: scale(0.85); opacity: 0; } to { transform: none; opacity: 1; } }
     .peek-bar { display: none; position: sticky; top: -18px; height: 4px; margin: -18px -20px 12px; background: var(--accent); transform-origin: left; z-index: 2; }
@@ -383,6 +410,21 @@
     body[data-stage="read"] .btn-skip { display: inline-block; }
     body[data-stage="read"] .btn-start { width: auto; min-width: 100px; padding: 10px 16px; font-size: 1rem; }
     body[data-stage="read"] .btn-skip { font-size: 1rem; }
+    /* 横長では、読む時間も「左に課題文・右に小さなタイマー」の2列にして、課題文を隠さない */
+    @media (orientation: landscape) and (min-width: 640px) {
+      body[data-stage="read"] #app,
+      body[data-mode="exam"][data-stage="read"] #app {
+        grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr);
+        grid-template-areas: "task timer";
+      }
+      body[data-stage="read"] #task-panel { padding-bottom: 18px; }
+      body[data-stage="read"] #timer-section {
+        position: relative; right: auto; bottom: auto; z-index: 10;
+        padding: calc(40px + env(safe-area-inset-top)) env(safe-area-inset-right) 14px 0;
+        border: 0; border-radius: 0; box-shadow: none; background: var(--timer-bg);
+      }
+      body[data-stage="read"] #timer-display { font-size: min(15vw, 28vh); }
+    }
     .btn-back.is-armed, .btn-reset.is-armed { color: #fff; background: #b00020; border-color: #b00020; }
   </style>
 </head>
@@ -702,6 +744,7 @@
       fired: new Set(),     // 音声を流し終えた（または通り過ぎた）ものの id
       tickId: null,
       lastActive: -1,
+      lastStage: '',
       readBase: 0,          // 読む時間の残り（ミリ秒）の基準
       readAnchor: 0,
       readLeftMs: 0,
@@ -727,6 +770,7 @@
         document.body.dataset.phase = phase;
         document.body.dataset.stage = reading ? 'read' : (this.status === 'idle' && this.elapsedMs === 0) ? 'ready' : 'run';
         if (document.body.dataset.stage === 'ready') peek.close();
+        if (document.body.dataset.stage !== this.lastStage) { this.lastStage = document.body.dataset.stage; fitTask(); }
 
         document.querySelectorAll('.instruction-block').forEach((node, i) => {
           node.classList.toggle('is-active', i === idx);
@@ -939,7 +983,7 @@
         if (b.body || b.bullets) {
           const bd = document.createElement('div');
           bd.className = 'block-body';
-          bd.append(document.createTextNode(b.body || ''));
+          if (b.body) { const tx = document.createElement('div'); tx.className = 'block-text'; tx.textContent = b.body; bd.appendChild(tx); }
           if (b.bullets) {
             const ul = document.createElement('ul');
             b.bullets.forEach((x) => { const li = document.createElement('li'); li.textContent = x; ul.appendChild(li); });
@@ -960,6 +1004,18 @@
       timer.lastActive = -1;
     }
 
+    // 横長の試験想定：課題文がスクロールなしで収まるように、文字の大きさを自動で合わせる
+    const LANDSCAPE = '(orientation: landscape) and (min-width: 640px)';
+    function fitTask() {
+      const p = $('task-panel');
+      p.style.fontSize = '';
+      if (state.mode !== 'exam' || !window.matchMedia(LANDSCAPE).matches) return;
+      if (getComputedStyle(p).display === 'none') return;
+      let fs = parseFloat(getComputedStyle(p).fontSize);
+      while (p.scrollHeight > p.clientHeight + 1 && fs > 9) { fs -= 0.5; p.style.fontSize = fs + 'px'; }
+    }
+    window.addEventListener('resize', fitTask);
+
     // 試験想定：課題文を隅に小さく残し、タップで数秒だけ大きく見せる
     const peek = {
       id: null,
@@ -971,6 +1027,7 @@
         panel.classList.add('is-peek');
         panel.scrollTop = 0;
         document.body.classList.add('peeking');
+        fitTask();
         clearTimeout(this.id);
         this.id = setTimeout(() => this.close(), PEEK_SEC * 1000);
       },
@@ -1157,6 +1214,7 @@
       timer.render();
       $('setup-screen').style.display = 'none';
       $('app').classList.add('is-visible');
+      fitTask();
     }
 
     function showSetupScreen() {
