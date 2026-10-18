@@ -137,14 +137,41 @@
     button { cursor: pointer; }
     [hidden] { display: none !important; }
 
-    /* 設定画面の右上：ライト／ダークの切り替え（控えめな小さいスイッチ） */
-    #theme-sw {
-      position: absolute; z-index: 3; padding: 2px; border-radius: 999px; background: transparent;
+    /* 設定画面の右上：画面（ライト／ダーク）と録音（なし／あり）の、控えめな小さいスイッチ */
+    #top-opts {
+      position: absolute; z-index: 3; display: grid; grid-template-columns: auto 118px; align-items: center; gap: 6px 8px;
       top: calc(14px + env(safe-area-inset-top)); right: calc(14px + env(safe-area-inset-right));
     }
-    #theme-sw::before { top: 2px; bottom: 2px; left: 2px; width: calc((100% - 4px) / 2); border-radius: 999px; box-shadow: none; }
-    #theme-sw span { padding: 3px 10px; font-size: 0.7rem; font-weight: 500; border-radius: 999px; color: var(--text-sub); }
-    #theme-sw input:checked + span { color: var(--on-accent); font-weight: 700; }
+    .opt-row { display: contents; }
+    .opt-row b { font-size: 0.68rem; font-weight: 500; color: var(--text-sub); }
+    .seg.mini { padding: 2px; border-radius: 999px; background: transparent; }
+    .seg.mini::before { top: 2px; bottom: 2px; left: 2px; width: calc((100% - 4px) / 2); border-radius: 999px; box-shadow: none; }
+    .seg.mini span { padding: 3px 10px; font-size: 0.7rem; font-weight: 500; border-radius: 999px; color: var(--text-sub); }
+    .seg.mini input:checked + span { color: var(--on-accent); font-weight: 700; }
+    .opt-msg { grid-column: 1 / -1; max-width: 220px; justify-self: end; margin: 0; font-size: 0.68rem; line-height: 1.5; text-align: right; color: var(--note); }
+    #rec-sw:has(input[value="on"]:checked)::before { background: #c62f3d; }
+
+    /* 録音の一覧（端末の中だけに一時保存） */
+    #rec-wrap { margin-top: 26px; }
+    #rec-wrap h2 { margin: 0 0 4px; font-size: 0.82rem; font-weight: 700; letter-spacing: 0.06em; color: var(--text-sub); }
+    #rec-wrap .help { margin: 0 0 10px; }
+    .rec-item { margin: 0 0 10px; padding: 11px 12px; background: var(--surface); border: 1px solid var(--line); border-radius: 12px; }
+    .rec-item .rec-title { margin: 0; font-size: 0.9rem; font-weight: 700; }
+    .rec-item .rec-sub { margin: 2px 0 8px; font-size: 0.72rem; color: var(--text-sub); }
+    .rec-item .rec-btns { display: flex; gap: 8px; }
+    .rec-item button { flex: 1; padding: 8px 4px; font-size: 0.8rem; font-weight: 700; color: var(--text); background: transparent; border: 1px solid var(--line); border-radius: 10px; }
+    .rec-item button.is-armed { color: #fff; background: #b00020; border-color: #b00020; }
+    .rec-item audio { display: block; width: 100%; margin: 0 0 8px; }
+
+    /* タイマー画面の「● 録音中」 */
+    #rec-badge { display: none; position: absolute; top: calc(34px + env(safe-area-inset-top)); left: 50%; transform: translateX(-50%); font-size: 0.7rem; color: #ff6b6b; white-space: nowrap; }
+    #rec-badge.is-on, #rec-badge.is-paused { display: block; }
+    #rec-badge::before { content: "●"; margin-right: 4px; animation: recblink 1.4s ease-in-out infinite; }
+    #rec-badge.is-paused { color: var(--timer-faint); }
+    #rec-badge.is-paused::before { content: "Ⅱ"; animation: none; }
+    @keyframes recblink { 50% { opacity: 0.25; } }
+    body[data-stage="read"] #rec-badge { display: none; }
+    body[data-mode="exam"][data-stage="run"]:has(#task-mini.has-info) #rec-badge { left: auto; right: calc(14px + env(safe-area-inset-right)); transform: none; }
 
     /* 画面を消さないための、ほぼ見えない小さな動画 */
     #awake-video {
@@ -484,6 +511,8 @@
     body[data-phase="warn"]     #timer-display { color: var(--timer-warn); }
     body[data-phase="report"]   #timer-display { color: var(--timer-phase2); }
     body[data-phase="finished"] #timer-display { color: var(--timer-end); }
+    /* 学習会仕様の超過表示（「＋00:23」）は1文字ぶん長いので、少し縮めて収める */
+    body.is-over #timer-display { transform: scale(0.85); }
 
     #controls { display: flex; align-items: center; justify-content: center; margin: 4px 0 10px; }
     #controls button {
@@ -579,9 +608,20 @@
 
   <!-- ===================== 設定画面 ===================== -->
   <main id="setup-screen">
-   <div class="seg" id="theme-sw" role="radiogroup" aria-label="表示の明るさ">
-     <label><input type="radio" name="theme" value="light"><span>ライト</span></label>
-     <label><input type="radio" name="theme" value="dark"><span>ダーク</span></label>
+   <div id="top-opts">
+     <div class="opt-row"><b>画面</b>
+       <div class="seg mini" id="theme-sw" role="radiogroup" aria-label="表示の明るさ">
+         <label><input type="radio" name="theme" value="light"><span>ライト</span></label>
+         <label><input type="radio" name="theme" value="dark"><span>ダーク</span></label>
+       </div>
+     </div>
+     <div class="opt-row"><b>録音</b>
+       <div class="seg mini" id="rec-sw" role="radiogroup" aria-label="学習会の録音">
+         <label><input type="radio" name="rec" value="off" checked><span>なし</span></label>
+         <label><input type="radio" name="rec" value="on"><span>あり</span></label>
+       </div>
+     </div>
+     <p class="opt-msg" id="rec-msg" role="status" hidden></p>
    </div>
    <div class="setup-inner">
     <header class="setup-head">
@@ -667,6 +707,12 @@
     </div>
 
     <button type="button" class="btn-next" id="go-timer">タイマー画面へ</button>
+    <section id="rec-wrap" hidden>
+      <h2>保存した録音</h2>
+      <p class="help" id="rec-help"></p>
+      <div id="rec-list"></div>
+    </section>
+
     <div class="setup-foot">
     <p id="offline-status" data-state="checking" role="status">オフライン準備中…</p>
     <p id="offline-hint" hidden>ホーム画面に追加しておくと、端末に保存されたデータが消えにくくなります（共有ボタン →「ホーム画面に追加」）。</p>
@@ -686,6 +732,7 @@
       <button type="button" class="btn-back" id="btn-back">◀ 戻る</button>
       <button type="button" id="btn-view" aria-label="課題文とタイマー、どちらを大きく見せるか切り替える"><span>課題文</span><span>タイマー</span></button>
       <div id="awake-badge" aria-live="off"></div>
+      <div id="rec-badge" aria-live="off">録音中</div>
       <div id="read-caption">課題文を読む時間</div>
       <div id="timer-display" aria-live="off">00:00</div>
       <div id="controls">
@@ -928,6 +975,187 @@
       }
     });
 
+
+    /* ==============================================================
+       録音（任意）。録音は、この端末の中（IndexedDB）にだけ一時保存する。外へは送らない。
+       ・「スタート」で始まり、「一時停止」で一時停止、「リセット」「戻る」で終了して保存
+       ・保存した録音は、一覧から「共有・保存」で別の場所へ移せる。一定日数で自動的に消える
+       ============================================================== */
+    const REC_DAYS = 7;
+    const recdb = {
+      db: null,
+      open() {
+        if (this.db) return Promise.resolve(this.db);
+        return new Promise((resolve, reject) => {
+          const r = indexedDB.open('osce-rec', 1);
+          r.onupgradeneeded = () => r.result.createObjectStore('recs', { keyPath: 'id' });
+          r.onsuccess = () => { this.db = r.result; resolve(r.result); };
+          r.onerror = () => reject(r.error);
+        });
+      },
+      async run(mode, fn) {
+        const db = await this.open();
+        return new Promise((resolve, reject) => {
+          const tx = db.transaction('recs', mode);
+          const req = fn(tx.objectStore('recs'));
+          tx.oncomplete = () => resolve(req && req.result);
+          tx.onerror = () => reject(tx.error);
+        });
+      },
+      put(rec) { return this.run('readwrite', (st) => st.put(rec)); },
+      del(id) { return this.run('readwrite', (st) => st.delete(id)); },
+      all() { return this.run('readonly', (st) => st.getAll()).then((v) => v || []); },
+    };
+    const REC_OK = !!(window.indexedDB && window.MediaRecorder && navigator.mediaDevices && navigator.mediaDevices.getUserMedia);
+
+    const rec = {
+      on: false, mr: null, stream: null, chunks: [], accumMs: 0, segStart: 0, starting: false, meta: null,
+
+      badge(mode) {   // 'on' / 'paused' / ''
+        const b = $('rec-badge');
+        b.className = mode ? 'is-' + mode : '';
+        b.textContent = mode === 'paused' ? '録音一時停止中' : '録音中';
+      },
+      message(text) { const m = $('rec-msg'); m.textContent = text || ''; m.hidden = !text; },
+
+      // 「あり」にした瞬間にマイクの許可を求める（すぐ解放する）
+      async enable() {
+        if (!REC_OK) { this.message('この端末では録音を使えません'); return false; }
+        try {
+          const s = await navigator.mediaDevices.getUserMedia({ audio: true });
+          s.getTracks().forEach((t) => t.stop());
+          if (navigator.storage && navigator.storage.persist) navigator.storage.persist().catch(() => {});
+          this.on = true; this.message('');
+          return true;
+        } catch (e) {
+          this.message('マイクが許可されませんでした。端末の設定でマイクを許可してください');
+          return false;
+        }
+      },
+      disable() { this.on = false; this.message(''); },
+
+      // タイマーが動き出した（または再開した）とき
+      async onRun() {
+        if (!this.on) return;
+        if (this.mr) {
+          if (this.mr.state === 'paused') { this.mr.resume(); this.segStart = performance.now(); this.badge('on'); }
+          return;
+        }
+        if (this.starting) return;
+        this.starting = true;
+        try {
+          this.stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+          const type = ['audio/mp4', 'audio/webm;codecs=opus', 'audio/webm', 'audio/ogg'].find((t) => MediaRecorder.isTypeSupported && MediaRecorder.isTypeSupported(t));
+          this.mr = type ? new MediaRecorder(this.stream, { mimeType: type }) : new MediaRecorder(this.stream);
+          this.chunks = []; this.accumMs = 0; this.segStart = performance.now();
+          this.meta = { createdAt: Date.now(), preset: state.preset === PRESETS.precc10 ? 'PreCC' : 'PostCC', mode: state.mode === 'exam' ? '試験仕様' : '学習会仕様' };
+          const mr = this.mr, chunks = this.chunks, meta = this.meta;
+          mr.ondataavailable = (e) => { if (e.data && e.data.size) chunks.push(e.data); };
+          mr.onstop = () => this.save(mr, chunks, meta);
+          mr.start(10000);
+          this.badge('on');
+        } catch (e) {
+          this.mr = null;
+          if (this.stream) { this.stream.getTracks().forEach((t) => t.stop()); this.stream = null; }
+          this.badge('');
+          this.message('録音を始められませんでした');
+        } finally { this.starting = false; }
+      },
+
+      pause() {
+        if (!this.mr || this.mr.state !== 'recording') return;
+        this.accumMs += performance.now() - this.segStart;
+        this.mr.pause();
+        this.badge('paused');
+      },
+
+      // 終了して保存
+      finish() {
+        if (!this.mr) { this.badge(''); return; }
+        const mr = this.mr;
+        if (mr.state === 'recording') this.accumMs += performance.now() - this.segStart;
+        this.meta.durationSec = Math.round(this.accumMs / 1000);
+        this.mr = null;
+        this.badge('');
+        try { if (mr.state !== 'inactive') mr.stop(); } catch (e) { /* 無視 */ }
+        if (this.stream) { this.stream.getTracks().forEach((t) => t.stop()); this.stream = null; }
+      },
+
+      async save(mr, chunks, meta) {
+        if (!chunks.length || (meta.durationSec || 0) < 2) return;   // ごく短いものは保存しない
+        const mime = mr.mimeType || chunks[0].type || 'audio/mp4';
+        const blob = new Blob(chunks, { type: mime });
+        try {
+          await recdb.put(Object.assign({ id: meta.createdAt, mime, size: blob.size, blob }, meta));
+          recList.render();
+          this.message('録音を保存しました（下の「保存した録音」から）');
+          setTimeout(() => { if ($('rec-msg').textContent.startsWith('録音を保存')) this.message(''); }, 6000);
+        } catch (e) { this.message('録音を保存できませんでした'); }
+      },
+    };
+
+    const recList = {
+      urls: [],
+      fileName(r) {
+        const d = new Date(r.createdAt), z = (n) => String(n).padStart(2, '0');
+        const ext = /mp4|aac/.test(r.mime) ? 'm4a' : /ogg/.test(r.mime) ? 'ogg' : 'webm';
+        return `OSCE録音_${d.getFullYear()}${z(d.getMonth() + 1)}${z(d.getDate())}_${z(d.getHours())}${z(d.getMinutes())}_${r.preset}.${ext}`;
+      },
+      async purge() {
+        const limit = Date.now() - REC_DAYS * 86400000;
+        const all = await recdb.all();
+        for (const r of all) if (r.createdAt < limit) await recdb.del(r.id);
+      },
+      async render() {
+        const wrap = $('rec-wrap'), box = $('rec-list');
+        let all = [];
+        try { all = (await recdb.all()).sort((a, b) => b.createdAt - a.createdAt); } catch (e) { /* 使えない環境 */ }
+        this.urls.forEach((u) => URL.revokeObjectURL(u)); this.urls = [];
+        box.textContent = '';
+        wrap.hidden = !all.length;
+        $('rec-help').textContent = `録音は、この端末の中にだけあります。必要なものは「共有・保存」で別の場所へ移してください。${REC_DAYS}日たつと自動で消えます。`;
+        all.forEach((r) => {
+          const d = new Date(r.createdAt);
+          const left = Math.max(0, Math.ceil((r.createdAt + REC_DAYS * 86400000 - Date.now()) / 86400000));
+          const item = document.createElement('div'); item.className = 'rec-item';
+          const t = document.createElement('p'); t.className = 'rec-title';
+          t.textContent = `${d.getMonth() + 1}/${d.getDate()} ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}　${r.preset}（${r.mode}）`;
+          const sub = document.createElement('p'); sub.className = 'rec-sub';
+          sub.textContent = `${formatTime(r.durationSec || 0)}　${(r.size / 1048576).toFixed(1)}MB　あと${left}日で消えます`;
+          const btns = document.createElement('div'); btns.className = 'rec-btns';
+          const mk = (label, fn) => { const b = document.createElement('button'); b.type = 'button'; b.textContent = label; b.addEventListener('click', () => fn(b)); btns.appendChild(b); return b; };
+          let audioEl = null;
+          mk('再生', () => {
+            if (audioEl) { audioEl.pause(); audioEl.remove(); audioEl = null; return; }
+            const u = URL.createObjectURL(r.blob); this.urls.push(u);
+            audioEl = document.createElement('audio'); audioEl.controls = true; audioEl.src = u;
+            item.insertBefore(audioEl, btns); audioEl.play().catch(() => {});
+          });
+          mk('共有・保存', async () => {
+            const file = new File([r.blob], this.fileName(r), { type: r.mime });
+            try {
+              if (navigator.canShare && navigator.canShare({ files: [file] })) { await navigator.share({ files: [file] }); return; }
+            } catch (e) { if (e && e.name === 'AbortError') return; }
+            const a = document.createElement('a'); const u = URL.createObjectURL(file);
+            a.href = u; a.download = file.name; document.body.appendChild(a); a.click(); a.remove();
+            setTimeout(() => URL.revokeObjectURL(u), 10000);
+          });
+          let armTimer = null;
+          mk('削除', (b) => {
+            if (!b.classList.contains('is-armed')) {
+              b.classList.add('is-armed'); b.textContent = 'もう一度タップ';
+              armTimer = setTimeout(() => { b.classList.remove('is-armed'); b.textContent = '削除'; }, 3000);
+              return;
+            }
+            clearTimeout(armTimer);
+            recdb.del(r.id).then(() => this.render());
+          });
+          item.append(t, sub, btns);
+          box.appendChild(item);
+        });
+      },
+    };
+
     /* ==============================================================
        タイマー本体（ミリ秒で正確に測り、画面は秒で表示）
        status: idle(開始前) / preparing(開始音声中) / running / paused / finished
@@ -946,6 +1174,8 @@
       readLeftMs: 0,
 
       get total() { return state.preset.totalSec; },
+      // 学習会仕様は、終了後も数え続ける（超過時間を見るため）。上限は99分59秒
+      get limitMs() { return (this.total + (state.mode === 'study' ? 5999 : 0)) * 1000; },
       get elapsed() { return Math.floor(this.elapsedMs / 1000); },
       get cues() { return state.preset.cues.filter((c) => c.kind !== 'intro'); },
 
@@ -954,7 +1184,9 @@
         const P = state.preset;
         const e = this.elapsed;
         const reading = ['readintro', 'reading', 'readpaused'].includes(this.status);
-        $('timer-display').textContent = reading ? formatTime(Math.ceil(this.readLeftMs / 1000)) : formatTime(e);
+        const over = !reading && state.mode === 'study' && e >= P.totalSec;   // 終了後の超過時間
+        $('timer-display').textContent = reading ? formatTime(Math.ceil(this.readLeftMs / 1000)) : over ? '+' + formatTime(e - P.totalSec) : formatTime(e);
+        document.body.classList.toggle('is-over', over);
 
         const finished = e >= P.totalSec;
         let idx = 0;
@@ -994,12 +1226,12 @@
 
       // --- 経過を直接動かす（早送り・ジャンプ用。音は鳴らさない） ---
       setElapsed(sec) {
-        this.elapsedMs = clamp(sec, 0, this.total) * 1000;
+        this.elapsedMs = clamp(sec, 0, this.limitMs / 1000) * 1000;
         this.baseMs = this.elapsedMs;
         this.anchorMs = performance.now();
         this.markPassed();
-        if (this.status === 'running' && this.elapsedMs >= this.total * 1000) this.finish();
-        else if (this.status === 'finished' && this.elapsedMs < this.total * 1000) {
+        if (this.status === 'running' && this.elapsedMs >= this.limitMs) this.finish();
+        else if (this.status === 'finished' && this.elapsedMs < this.limitMs) {
           // 終了後に巻き戻したときは、続きから再開できる状態に戻す
           this.status = this.elapsedMs === 0 ? 'idle' : 'paused';
         }
@@ -1015,7 +1247,7 @@
           return;
         }
         if (this.status !== 'running') return;
-        const totalMs = this.total * 1000;
+        const totalMs = this.limitMs;
         this.elapsedMs = Math.min(totalMs, this.baseMs + (performance.now() - this.anchorMs));
         for (const c of this.cues) {
           if (this.fired.has(c.id)) continue;
@@ -1046,6 +1278,7 @@
       },
 
       begin() {
+        rec.onRun();
         this.status = 'running';
         this.baseMs = this.elapsedMs;
         this.anchorMs = performance.now();
@@ -1054,8 +1287,9 @@
       },
 
       finish() {
+        rec.finish();
         this.status = 'finished';
-        this.elapsedMs = this.total * 1000;
+        this.elapsedMs = this.limitMs;
         this.stopTicking();
         awake.stop();
       },
@@ -1077,6 +1311,7 @@
           this.stopTicking();
           audio.stopAll();
           awake.stop();
+          rec.pause();
           this.status = 'paused';
           this.render();
         } else if (this.status === 'idle' || this.status === 'paused') {
@@ -1110,6 +1345,7 @@
       },
 
       reset() {
+        rec.finish();
         this.stopTicking();
         audio.stopAll();
         awake.stop();
@@ -1717,6 +1953,14 @@
         try { localStorage.setItem('osce.theme', r.value); } catch (e) { /* 保存できなくても動作は続ける */ }
       }));
       if (mqDark.addEventListener) mqDark.addEventListener('change', showTheme);
+      // 録音：起動するたびに「なし」から。「あり」にした瞬間にマイクの許可を求める
+      document.querySelectorAll('input[name="rec"]').forEach((r) => r.addEventListener('change', async () => {
+        if (r.value === 'on') {
+          const ok = await rec.enable();
+          if (!ok) document.querySelector('input[name="rec"][value="off"]').checked = true;
+        } else rec.disable();
+      }));
+      if (REC_OK) recList.purge().catch(() => {}).then(() => recList.render());
       document.body.dataset.view = prefs.view === 'timer' ? 'timer' : 'text';
       $('btn-view').addEventListener('click', () => {
         document.body.dataset.view = document.body.dataset.view === 'timer' ? 'text' : 'timer';
