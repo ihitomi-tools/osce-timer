@@ -276,7 +276,14 @@
       box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
       border-left: 6px solid var(--line);
     }
-    .block-title { display: flex; justify-content: space-between; gap: 8px; margin-bottom: 0.3em; font-weight: 700; color: var(--accent); }
+    .block-title { display: flex; flex-wrap: wrap; justify-content: flex-start; align-items: flex-start; gap: 0.15em 0.7em; margin-bottom: 0.3em; font-weight: 700; color: var(--accent); }
+    .block-title span:first-child { min-width: 0; text-wrap: balance; }
+    .block-title span:last-child {
+      flex: none; align-self: flex-start; white-space: nowrap;
+      font-size: 0.78em; font-weight: 500; line-height: 1.7; padding: 0 0.75em;
+      color: var(--text-sub); border: 1px solid var(--line); border-radius: 999px;
+    }
+    #task-body p, .block-body li { text-wrap: pretty; }
     .block-body { font-size: 0.9em; }
     .block-body ul { margin: 0.3em 0 0; padding-left: 1.3em; }
 
@@ -292,21 +299,22 @@
     body[data-mode="exam"] .block-title,
     body[data-mode="exam"] .block-text,
     body[data-mode="exam"] .block-body li { position: relative; }
-    body[data-mode="exam"] .t-situ { margin: 0 0 0.3em; padding-left: 0.9em; font-size: 1.15em; font-weight: 400; }
+    body[data-mode="exam"] .t-situ { margin: 0 0 0.35em; padding-left: 0.9em; font-size: 1.15em; font-weight: 500; }
     body[data-mode="exam"] .t-patient,
     body[data-mode="exam"] .t-supp { margin: 0 0 0.3em; padding-left: 2.1em; font-weight: 400; color: var(--text); }
+    body[data-mode="exam"] .t-patient { font-weight: 700; }
     body[data-mode="exam"] .t-note { margin: 1.3em 0 0 !important; padding-left: 0.9em; font-size: 1.1em; color: var(--text); }
     body[data-mode="exam"] .t-situ::before, body[data-mode="exam"] .t-note::before,
-    body[data-mode="exam"] .block-title::before { content: "•"; position: absolute; left: 0; }
+    body[data-mode="exam"] .block-title::before { content: "•"; position: absolute; left: 0; color: var(--accent); }
     body[data-mode="exam"] .t-patient::before, body[data-mode="exam"] .t-supp::before,
-    body[data-mode="exam"] .block-text::before { content: "•"; position: absolute; left: 1.1em; }
-    body[data-mode="exam"] .instruction-block { margin: 1.5em 0 0; padding: 0; background: none; box-shadow: none; border-left: 0; border-radius: 0; }
-    body[data-mode="exam"] .block-title { justify-content: flex-start; gap: 2.2em; margin: 0 0 0.3em; padding-left: 0.9em; font-size: 1.15em; font-weight: 400; color: var(--text); }
+    body[data-mode="exam"] .block-text::before { content: "•"; position: absolute; left: 1.1em; color: var(--accent); }
+    body[data-mode="exam"] .instruction-block { margin: 1.1em 0 0; padding: 1em 0 0; background: none; box-shadow: none; border-left: 0; border-top: 1px solid var(--line); border-radius: 0; }
+    body[data-mode="exam"] .block-title { justify-content: flex-start; gap: 0.7em; margin: 0 0 0.35em; padding-left: 0.9em; font-size: 1.15em; font-weight: 700; color: var(--text); }
     body[data-mode="exam"] .block-body { font-size: 1em; }
     body[data-mode="exam"] .block-text { padding-left: 2.1em; margin-bottom: 0.2em; }
     body[data-mode="exam"] .block-body ul { margin: 0; padding: 0; list-style: none; }
     body[data-mode="exam"] .block-body li { margin: 0 0 0.2em; padding-left: 2.1em; }
-    body[data-mode="exam"] .block-body li::before { content: "•"; position: absolute; left: 1.1em; }
+    body[data-mode="exam"] .block-body li::before { content: "•"; position: absolute; left: 1.1em; color: var(--accent); }
 
     /* 試験想定・開始後：隅の小さなカード → タップで数秒だけ拡大 */
     body[data-mode="exam"][data-stage="run"] #task-panel { display: none; }
@@ -431,13 +439,13 @@
       grid-template-rows: minmax(0, 1fr);
       grid-template-areas: "task";
     }
-    body[data-stage="read"] #task-panel { padding-bottom: 148px; }
+    body[data-stage="read"] #task-panel { padding-bottom: 172px; }
     body[data-stage="read"] #timer-section {
       position: fixed; z-index: 30;
       right: calc(12px + env(safe-area-inset-right)); bottom: calc(12px + env(safe-area-inset-bottom));
       padding: 10px 14px 12px; border-radius: 18px;
-      background: rgba(0, 0, 0, 0.94); border: 1px solid #3a3d45;
-      box-shadow: 0 6px 24px rgba(0, 0, 0, 0.45);
+      background: rgba(0, 0, 0, 0.96); border: 1px solid #3a3d45;
+      box-shadow: 0 8px 28px rgba(0, 0, 0, 0.4);
     }
     body[data-stage="read"] #read-caption { display: block; }
     body[data-stage="read"] #timer-section { padding: 8px 12px 10px; }
@@ -534,6 +542,10 @@
     <details class="manual" id="manual">
       <summary>手入力で課題文をつくる</summary>
       <div class="manual-body">
+        <div class="row" style="gap:10px;flex-wrap:nowrap">
+          <select id="man-select" class="select-box" aria-label="保存した課題文"></select>
+          <button type="button" class="btn-sub is-quiet" id="man-del" hidden>消す</button>
+        </div>
         <div>
           <input type="text" id="m-situ" class="text-box" aria-label="状況" value="ここは初診外来です。">
           <div class="chips" style="margin-top:6px">
@@ -542,7 +554,6 @@
           </div>
         </div>
         <input type="text" id="m-patient" class="text-box" aria-label="患者" placeholder="患者 田中 花子 さん（36歳女性）">
-        <textarea id="m-supp" class="text-box" aria-label="補足（1行ごと）" placeholder="補足があれば（1行に1つ）"></textarea>
       </div>
     </details>
 
@@ -1239,7 +1250,7 @@
     function manualScenario() {
       const lines = (id) => $(id).value.split('\n').map((t) => t.trim()).filter(Boolean);
       return {
-        tag: '', situation: lines('m-situ'), patient: $('m-patient').value.trim(), supplement: lines('m-supp'), note: [],
+        tag: '', situation: lines('m-situ'), patient: $('m-patient').value.trim(), supplement: [], note: [],
       };
     }
 
@@ -1283,6 +1294,36 @@
       pre.list = pre.list.slice(0, PRE_MAX);
       store.set('osce.pre', pre.list);
       buildPreOptions('p0');
+    }
+
+    /* PostCC：手入力した課題文も端末に覚えておく（選んで呼び出し・消せる） */
+    const MAN_MAX = 6;
+    const man = { list: [] };
+    const manFromFields = () => ({ situ: $('m-situ').value.trim(), patient: $('m-patient').value.trim() });
+    const manKey = (m) => [m.situ, m.patient].join('|');
+    const manLabel = (m) => (m.patient || m.situ || '（無題）').replace(/\s+/g, ' ');
+    function buildManOptions(selected) {
+      const sel = $('man-select');
+      sel.textContent = '';
+      const add = (v, l) => { const o = document.createElement('option'); o.value = v; o.textContent = l; sel.appendChild(o); };
+      add('new', man.list.length ? '新しく入力する' : '手入力（保存したものはここに並びます）');
+      man.list.forEach((m, i) => add('m' + i, manLabel(m)));
+      sel.value = Array.from(sel.options).some((o) => o.value === selected) ? selected : 'new';
+      $('man-del').hidden = sel.value === 'new';
+    }
+    function manFill(m) {
+      $('m-situ').value = m ? m.situ : 'ここは初診外来です。'; $('m-patient').value = m ? m.patient : '';
+    }
+    function manRemember() {
+      if ($('scenario-select').value !== 'manual') return;
+      const m = manFromFields();
+      if (!m.patient) return;
+      const i = man.list.findIndex((q) => manKey(q) === manKey(m));
+      if (i >= 0) { buildManOptions('m' + i); return; }
+      man.list.unshift(m);
+      man.list = man.list.slice(0, MAN_MAX);
+      store.set('osce.manuals', man.list);
+      buildManOptions('m0');
     }
 
     function buildScenarioOptions(selected) {
@@ -1330,10 +1371,11 @@
                     : null;
       document.body.dataset.mode = mode;
       store.set('osce.prefs', { preset: presetKey, mode, entry, scenario: v });
-      store.set('osce.manual', { situ: $('m-situ').value, patient: $('m-patient').value, supp: $('m-supp').value });
+      store.set('osce.manual', { situ: $('m-situ').value, patient: $('m-patient').value });
     }
 
     function showTimerScreen() {
+      applySelection(); if (state.preset !== PRESETS.precc10) manRemember();
       if ($('pre-select')) { applySelection(); if (state.preset === PRESETS.precc10) preRemember(); }
       applySelection();
       audio.load(state.preset);
@@ -1417,7 +1459,7 @@
       if (saved && Array.isArray(saved.scenarios)) { session.scenarios = saved.scenarios; session.importedAt = saved.importedAt; }
       const prefs = store.get('osce.prefs', {});
       const manual = store.get('osce.manual', null);
-      if (manual) { $('m-situ').value = manual.situ || ''; $('m-patient').value = manual.patient || ''; $('m-supp').value = manual.supp || ''; }
+      if (manual) { $('m-situ').value = manual.situ || ''; $('m-patient').value = manual.patient || ''; }
       const check = (name, value) => { const r = document.querySelector(`input[name="${name}"][value="${value}"]`); if (r) r.checked = true; };
       if (prefs.preset) check('preset', prefs.preset);
       if (prefs.mode) check('mode', prefs.mode);
@@ -1425,6 +1467,22 @@
       buildScenarioOptions(prefs.scenario);
       pre.list = (store.get('osce.pre', []) || []).filter((p) => p && (p.last || p.first)).slice(0, PRE_MAX);
       buildPreOptions('new');
+      man.list = (store.get('osce.manuals', []) || []).filter((m) => m && m.patient).slice(0, MAN_MAX);
+      buildManOptions('new');
+      $('man-select').addEventListener('change', () => {
+        const v = $('man-select').value;
+        manFill(/^m\d+$/.test(v) ? man.list[Number(v.slice(1))] : null);
+        $('man-del').hidden = v === 'new';
+        $('scenario-select').value = 'manual';
+      });
+      ['m-situ', 'm-patient'].forEach((id) => $(id).addEventListener('input', () => { $('man-select').value = 'new'; $('man-del').hidden = true; }));
+      $('man-del').addEventListener('click', () => {
+        const v = $('man-select').value;
+        if (!/^m\d+$/.test(v)) return;
+        man.list.splice(Number(v.slice(1)), 1);
+        store.set('osce.manuals', man.list);
+        manFill(null); buildManOptions('new');
+      });
       $('pre-select').addEventListener('change', () => {
         const v = $('pre-select').value;
         preFill(/^p\d+$/.test(v) ? pre.list[Number(v.slice(1))] : null);
@@ -1447,9 +1505,9 @@
       document.querySelectorAll('input[name="mode"], input[name="entry"]').forEach((r) => r.addEventListener('change', applySelection));
       $('manual').addEventListener('toggle', () => { if ($('manual').open) $('scenario-select').value = 'manual'; });
       document.querySelectorAll('.chips button').forEach((b) => b.addEventListener('click', () => {
-        $('m-situ').value = b.dataset.fill; $('scenario-select').value = 'manual';
+        $('m-situ').value = b.dataset.fill; $('scenario-select').value = 'manual'; $('man-select').value = 'new'; $('man-del').hidden = true;
       }));
-      ['m-situ', 'm-patient', 'm-supp'].forEach((id) => $(id).addEventListener('input', () => { $('scenario-select').value = 'manual'; }));
+      ['m-situ', 'm-patient'].forEach((id) => $(id).addEventListener('input', () => { $('scenario-select').value = 'manual'; }));
 
       $('pptx-file').addEventListener('change', async (e) => {
         const file = e.target.files && e.target.files[0];
