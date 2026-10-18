@@ -563,7 +563,12 @@
               <button type="button" data-fill="ここは救急外来です。">救急外来</button>
             </div>
           </div>
-          <input type="text" id="m-patient" class="text-box" aria-label="患者" placeholder="患者 田中 花子 さん（36歳女性）">
+          <div class="pre-grid">
+            <input type="text" id="m-last" class="text-box" aria-label="姓" placeholder="姓（〇〇）" autocomplete="off">
+            <input type="text" id="m-first" class="text-box" aria-label="名" placeholder="名（〇〇）" autocomplete="off">
+            <input type="text" id="m-age" class="text-box" aria-label="年齢" placeholder="年齢（歳）" inputmode="numeric" autocomplete="off">
+            <select id="m-sex" class="select-box" aria-label="性別"><option value="女性">女性</option><option value="男性">男性</option></select>
+          </div>
         </div>
       </div>
     </div>
@@ -1341,10 +1346,16 @@
       return `${s.tag}　${name}`.trim();
     }
 
+    /* 年齢は全角・半角どちらでも数字だけを受け付ける（半角に直して保存） */
+    const ageClean = (v) => String(v || '').replace(/[０-９]/g, (c) => String.fromCharCode(c.charCodeAt(0) - 0xFEE0)).replace(/[^0-9]/g, '');
     function manualScenario() {
       const lines = (id) => $(id).value.split('\n').map((t) => t.trim()).filter(Boolean);
+      const m = manFromFields();
+      const name = `${m.last} ${m.first}`.trim();
       return {
-        tag: '', situation: lines('m-situ'), patient: $('m-patient').value.trim(), supplement: [], note: [],
+        tag: '', situation: lines('m-situ'),
+        patient: name ? `患者 ${name} さん（${m.age ? m.age + '歳' : ''}${m.sex}）` : '',
+        supplement: [], note: [],
       };
     }
 
@@ -1354,7 +1365,7 @@
     const preKey = (p) => [p.last, p.first, p.age, p.sex].join('|');
     const preLabel = (p) => `${p.last} ${p.first}さん${p.age ? '　' + p.age + '歳' : ''}　${p.sex}`.trim();
     function preFromFields() {
-      return { last: $('pre-last').value.trim(), first: $('pre-first').value.trim(), age: $('pre-age').value.trim().replace(/[^0-9０-９]/g, ''), sex: $('pre-sex').value };
+      return { last: $('pre-last').value.trim(), first: $('pre-first').value.trim(), age: ageClean($('pre-age').value), sex: $('pre-sex').value };
     }
     function preScenario() {
       const p = preFromFields();
@@ -1393,9 +1404,9 @@
     /* PostCC：手入力した課題文も端末に覚えておく（選んで呼び出し・消せる） */
     const MAN_MAX = 6;
     const man = { list: [] };
-    const manFromFields = () => ({ situ: $('m-situ').value.trim(), patient: $('m-patient').value.trim() });
-    const manKey = (m) => [m.situ, m.patient].join('|');
-    const manLabel = (m) => (m.patient || m.situ || '（無題）').replace(/\s+/g, ' ');
+    const manFromFields = () => ({ situ: $('m-situ').value.trim(), last: $('m-last').value.trim(), first: $('m-first').value.trim(), age: ageClean($('m-age').value), sex: $('m-sex').value });
+    const manKey = (m) => [m.situ, m.last, m.first, m.age, m.sex].join('|');
+    const manLabel = (m) => `${m.last} ${m.first}さん${m.age ? '　' + m.age + '歳' : ''}　${m.sex}`.replace(/\s+/g, ' ').trim();
     function buildManOptions(selected) {
       const sel = $('man-select');
       sel.textContent = '';
@@ -1406,7 +1417,9 @@
       $('man-del').hidden = sel.value === 'new';
     }
     function manFill(m) {
-      $('m-situ').value = m ? m.situ : 'ここは初診外来です。'; $('m-patient').value = m ? m.patient : '';
+      $('m-situ').value = m ? m.situ : 'ここは初診外来です。';
+      $('m-last').value = m ? m.last : ''; $('m-first').value = m ? m.first : '';
+      $('m-age').value = m ? m.age : ''; $('m-sex').value = m ? m.sex : '女性';
       markChips();
     }
     function markChips() {
@@ -1417,7 +1430,7 @@
     function manRemember() {
       if (getSrc() !== 'manual') return;
       const m = manFromFields();
-      if (!m.patient) return;
+      if (!m.last && !m.first) return;
       const i = man.list.findIndex((q) => manKey(q) === manKey(m));
       if (i >= 0) { buildManOptions('m' + i); return; }
       man.list.unshift(m);
@@ -1487,7 +1500,7 @@
                     : null;
       document.body.dataset.mode = mode;
       store.set('osce.prefs', { preset: presetKey, mode, entry, scenario: v, src });
-      store.set('osce.manual', { situ: $('m-situ').value, patient: $('m-patient').value });
+      store.set('osce.manual', manFromFields());
     }
 
     function showTimerScreen() {
@@ -1575,7 +1588,10 @@
       if (saved && Array.isArray(saved.scenarios)) { session.scenarios = saved.scenarios; session.importedAt = saved.importedAt; }
       const prefs = store.get('osce.prefs', {});
       const manual = store.get('osce.manual', null);
-      if (manual) { $('m-situ').value = manual.situ || ''; $('m-patient').value = manual.patient || ''; }
+      if (manual) {
+        $('m-situ').value = manual.situ || ''; $('m-last').value = manual.last || ''; $('m-first').value = manual.first || '';
+        $('m-age').value = manual.age || ''; $('m-sex').value = manual.sex === '男性' ? '男性' : '女性';
+      }
       const check = (name, value) => { const r = document.querySelector(`input[name="${name}"][value="${value}"]`); if (r) r.checked = true; };
       if (prefs.preset) check('preset', prefs.preset);
       if (prefs.mode) check('mode', prefs.mode);
@@ -1585,14 +1601,14 @@
       markChips();
       pre.list = (store.get('osce.pre', []) || []).filter((p) => p && (p.last || p.first)).slice(0, PRE_MAX);
       buildPreOptions('new');
-      man.list = (store.get('osce.manuals', []) || []).filter((m) => m && m.patient).slice(0, MAN_MAX);
+      man.list = (store.get('osce.manuals', []) || []).filter((m) => m && (m.last || m.first)).slice(0, MAN_MAX);
       buildManOptions('new');
       $('man-select').addEventListener('change', () => {
         const v = $('man-select').value;
         manFill(/^m\d+$/.test(v) ? man.list[Number(v.slice(1))] : null);
         $('man-del').hidden = v === 'new';
       });
-      ['m-situ', 'm-patient'].forEach((id) => $(id).addEventListener('input', () => { $('man-select').value = 'new'; $('man-del').hidden = true; }));
+      ['m-situ', 'm-last', 'm-first', 'm-age', 'm-sex'].forEach((id) => $(id).addEventListener('input', () => { $('man-select').value = 'new'; $('man-del').hidden = true; }));
       $('man-del').addEventListener('click', () => {
         const v = $('man-select').value;
         if (!/^m\d+$/.test(v)) return;
@@ -1626,6 +1642,7 @@
         $('m-situ').value = b.dataset.fill; $('man-select').value = 'new'; $('man-del').hidden = true; markChips();
       }));
       $('m-situ').addEventListener('input', markChips);
+      ['pre-age', 'm-age'].forEach((id) => $(id).addEventListener('change', () => { $(id).value = ageClean($(id).value); }));
 
       $('pptx-file').addEventListener('change', async (e) => {
         const files = Array.from(e.target.files || []).sort((a, b) => a.name.localeCompare(b.name, 'ja', { numeric: true }));
