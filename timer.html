@@ -56,12 +56,12 @@
       --timer-phase2: #ffeb3b;
       --timer-end: #f44336;
 
-      --btn-start: #28a745;
-      --btn-pause: #ff9800;
-      --btn-resume: #007bff;
-      --btn-reset: #dc3545;
-      --btn-seek: #444444;
-      --btn-seek-pressed: #666666;
+      --btn-start: #3d5fc4;
+      --btn-pause: #c77d12;
+      --btn-resume: #3d5fc4;
+      --btn-reset: #8a2f3b;
+      --btn-seek: #2a2d35;
+      --btn-seek-pressed: #454955;
       --btn-disabled: #6c757d;
     }
     @media (prefers-color-scheme: dark) {
@@ -370,13 +370,13 @@
       transition: color 0.3s ease;
     }
     /* 画面の大きさに合わせた数字の大きさ（縦） */
-    body[data-mode="exam"][data-stage="run"] #timer-display { font-size: min(34vw, 30vh); }
+    body[data-mode="exam"][data-stage="run"] #timer-display { font-size: min(31vw, 30vh); }
     body[data-mode="study"] #timer-display { font-size: min(24vw, 17vh); }
     /* 横長 */
     @media (orientation: landscape) and (min-width: 640px) {
       #timer-display { font-size: min(15vw, 28vh); }
       body[data-mode="exam"][data-stage="run"] #timer-display { font-size: min(30vw, 52vh); }
-      body[data-mode="study"] #timer-display { font-size: min(17vw, 40vh); }
+      body[data-mode="study"] #timer-display { font-size: min(13.5vw, 40vh); }
       #timer-section { padding-top: calc(40px + env(safe-area-inset-top)); padding-right: env(safe-area-inset-right); }
     }
     body[data-phase="warn"]     #timer-display { color: var(--timer-warn); }
@@ -396,6 +396,20 @@
     .btn-seek:active, .btn-seek.is-pressed { background: var(--btn-seek-pressed); }
     .btn-seek svg { width: 26px; height: 26px; fill: currentColor; pointer-events: none; }
 
+    /* 30秒ずつ戻る／進む（学習会想定のときだけ表示） */
+    #controls .btn-jump { display: none; width: 52px; height: 46px; padding: 0; background: transparent; border: 1px solid #4a4e58; border-radius: 30px; font-variant-numeric: tabular-nums; font-size: 1rem; }
+    .btn-jump:active { background: var(--btn-seek-pressed); }
+    body[data-mode="study"]:not([data-stage="read"]) #controls .btn-jump { display: block; }
+    body[data-mode="study"]:not([data-stage="read"]) #controls button { margin: 0 3px; }
+    body[data-mode="study"]:not([data-stage="read"]) .btn-seek { width: 54px; }
+    body[data-mode="study"]:not([data-stage="read"]) .btn-start { width: 112px; }
+    @media (orientation: landscape) and (max-width: 760px) {
+      body[data-mode="study"]:not([data-stage="read"]) #controls button { margin: 0 2px; }
+      body[data-mode="study"]:not([data-stage="read"]) #controls .btn-jump { width: 40px; font-size: 0.88rem; }
+      body[data-mode="study"]:not([data-stage="read"]) .btn-seek { width: 42px; }
+      body[data-mode="study"]:not([data-stage="read"]) .btn-seek svg { width: 22px; height: 22px; }
+      body[data-mode="study"]:not([data-stage="read"]) .btn-start { width: 84px; padding: 12px 6px; font-size: 1rem; }
+    }
     .btn-start { width: 130px; padding: 12px 20px; background: var(--btn-start); }
     .btn-start[data-state="running"] { background: var(--btn-pause); }
     .btn-start[data-state="paused"]  { background: var(--btn-resume); }
@@ -456,7 +470,7 @@
     .btn-back.is-armed, .btn-reset.is-armed { color: #fff; background: #b00020; border-color: #b00020; }
   </style>
 </head>
-<body data-mode="exam" data-stage="ready" data-phase="interview">
+<body data-mode="study" data-stage="ready" data-phase="interview">
 
   <!-- 画面を消さないための補助（下の「画面を消さない」参照） -->
   <video id="awake-video" src="awake.mp4" muted loop playsinline webkit-playsinline preload="auto" aria-hidden="true"></video>
@@ -472,16 +486,16 @@
     <fieldset class="field">
       <legend>時間</legend>
       <div class="seg" id="seg-preset">
-        <label><input type="radio" name="preset" value="postcc16" checked><span>PostCC<small>16分</small></span></label>
-        <label><input type="radio" name="preset" value="precc10"><span>PreCC<small>10分</small></span></label>
+        <label><input type="radio" name="preset" value="precc10" checked><span>PreCC<small>10分</small></span></label>
+        <label><input type="radio" name="preset" value="postcc16"><span>PostCC<small>16分</small></span></label>
       </div>
     </fieldset>
 
     <fieldset class="field">
       <legend>見え方</legend>
       <div class="seg" id="seg-mode">
-        <label><input type="radio" name="mode" value="exam" checked><span>試験想定<small>開始後はタイマーだけ</small></span></label>
-        <label><input type="radio" name="mode" value="study"><span>学習会想定<small>場面を常に表示</small></span></label>
+        <label><input type="radio" name="mode" value="study" checked><span>学習会想定<small>場面を常に表示</small></span></label>
+        <label><input type="radio" name="mode" value="exam"><span>試験想定<small>開始後はタイマーだけ</small></span></label>
       </div>
     </fieldset>
 
@@ -540,6 +554,7 @@
       <div id="read-caption">課題文を読む時間</div>
       <div id="timer-display" aria-live="off">00:00</div>
       <div id="controls">
+        <button type="button" class="btn-jump" id="btn-back30" aria-label="30秒戻る">−30</button>
         <button type="button" class="btn-seek" id="btn-rewind" aria-label="巻き戻し（長押しで加速）">
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M11 6v12L2 12zM21 6v12l-9-6z"/></svg>
         </button>
@@ -547,6 +562,7 @@
         <button type="button" class="btn-seek" id="btn-forward" aria-label="早送り（長押しで加速）">
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M13 6v12l9-6zM3 6v12l9-6z"/></svg>
         </button>
+        <button type="button" class="btn-jump" id="btn-fwd30" aria-label="30秒進む">＋30</button>
         <button type="button" class="btn-skip" id="btn-skip">開始へ</button>
       </div>
       <div><button type="button" class="btn-reset" id="btn-reset">リセット</button></div>
@@ -630,8 +646,8 @@
     };
 
     const state = {
-      preset: PRESETS.postcc16,
-      mode: 'exam',
+      preset: PRESETS.precc10,
+      mode: 'study',
       readSec: 0,          // 課題文を読む時間（0なら「開始から」）
       scenario: null,      // 表示する課題文（なければ null）
     };
@@ -1320,7 +1336,14 @@
     /* ==============================================================
        起動
        ============================================================== */
+    function bindJump(id, delta) {
+      const b = $(id);
+      b.addEventListener('click', () => timer.setElapsed(timer.elapsed + delta));
+    }
+
     function init() {
+      bindJump('btn-back30', -30);
+      bindJump('btn-fwd30', 30);
       // 前回の選択を戻す
       const saved = store.get('osce.session', null);
       if (saved && Array.isArray(saved.scenarios)) { session.scenarios = saved.scenarios; session.importedAt = saved.importedAt; }
