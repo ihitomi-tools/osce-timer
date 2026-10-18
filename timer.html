@@ -724,9 +724,11 @@
           if (a._unlocked) return;
           a._unlocked = true;
           a.muted = true;
-          const restore = () => { a.pause(); a.currentTime = 0; a.muted = false; };
+          // 消音のまま止める。消音を戻すのは、本当に鳴らす直前（play）だけにする
+          // （ここで戻すと、止め損ねたときにタップだけで音が流れてしまう）
+          const restore = () => { if (a._real) return; a.pause(); a.currentTime = 0; };
           const p = a.play();
-          if (p && p.then) p.then(restore).catch(() => { a.muted = false; });
+          if (p && p.then) p.then(restore).catch(() => {});
           else restore();
         });
       },
@@ -741,6 +743,8 @@
       play(file) {
         const a = this.els[file];
         if (!a) return Promise.reject(new Error('no audio'));
+        a._real = true;
+        a.muted = false;
         a.currentTime = 0;
         const p = a.play();
         return p || Promise.resolve();
