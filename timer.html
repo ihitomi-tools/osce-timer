@@ -878,11 +878,9 @@
           if (a._unlocked) return;
           a._unlocked = true;
           a.muted = true;
-          // 消音のまま止める。消音を戻すのは、本当に鳴らす直前（play）だけにする
-          // （ここで戻すと、止め損ねたときにタップだけで音が流れてしまう）
-          const restore = () => { if (a._real) return; a.pause(); a.currentTime = 0; };
+          const restore = () => { a.pause(); a.currentTime = 0; a.muted = false; };
           const p = a.play();
-          if (p && p.then) p.then(restore).catch(() => {});
+          if (p && p.then) p.then(restore).catch(() => { a.muted = false; });
           else restore();
         });
       },
@@ -897,7 +895,6 @@
       play(file) {
         const a = this.els[file];
         if (!a) return Promise.reject(new Error('no audio'));
-        a._real = true;
         a.muted = false;
         a.currentTime = 0;
         const p = a.play();
@@ -2035,7 +2032,7 @@
 
       // 時間の種類を選んだ時点で音声を用意（このタップでiPhoneの音声許可も済ませる）
       document.querySelectorAll('input[name="preset"]').forEach((r) => r.addEventListener('change', () => {
-        applySelection(); audio.load(state.preset); audio.unlock();
+        applySelection(); audio.load(state.preset);   // 音の準備だけ（鳴らす許可は、タイマー画面へ進むタップで行う）
       }));
       document.querySelectorAll('input[name="mode"], input[name="entry"]').forEach((r) => r.addEventListener('change', applySelection));
       document.querySelectorAll('input[name="src"]').forEach((r) => r.addEventListener('change', applySelection));
