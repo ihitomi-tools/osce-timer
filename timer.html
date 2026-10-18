@@ -552,6 +552,13 @@
       background: var(--btn-reset); border: none; border-radius: 20px;
     }
     .btn-skip { display: none; padding: 12px 16px; background: var(--btn-seek); }
+    /* 学習会仕様：一時停止したときだけ出る「終了」（録音中は「録音を保存して終了」） */
+    #stop-wrap { text-align: center; }
+    .btn-stop { display: none; width: 230px; max-width: 86vw; margin: 0 auto 8px; padding: 11px 0; font-size: 0.95rem; font-weight: 700; color: #fff; background: #b3262f; border: none; border-radius: 24px; }
+    .btn-stop:active { opacity: 0.85; }
+    body[data-mode="study"][data-tstate="paused"] .btn-stop { display: block; }
+    #stop-note { margin: 0 0 8px; font-size: 0.8rem; color: var(--timer-sub); }
+    #stop-note:empty { display: none; }
     #read-caption { display: none; font-size: 0.8rem; color: var(--timer-sub); }
 
     /* 入室から：課題文を全面に出し、タイマーは隅に小さく置く（読む時間） */
@@ -746,6 +753,10 @@
         </button>
         <button type="button" class="btn-jump" id="btn-fwd30" aria-label="30秒進む">＋30</button>
         <button type="button" class="btn-skip" id="btn-skip">開始へ</button>
+      </div>
+      <div id="stop-wrap">
+        <button type="button" class="btn-stop" id="btn-stop">■ 終了</button>
+        <p id="stop-note" role="status"></p>
       </div>
       <div><button type="button" class="btn-reset" id="btn-reset">リセット</button></div>
     </section>
@@ -1071,7 +1082,7 @@
 
       // 終了して保存
       finish() {
-        if (!this.mr) { this.badge(''); return; }
+        if (!this.mr) { this.badge(''); return false; }
         const mr = this.mr;
         if (mr.state === 'recording') this.accumMs += performance.now() - this.segStart;
         this.meta.durationSec = Math.round(this.accumMs / 1000);
@@ -1079,6 +1090,7 @@
         this.badge('');
         try { if (mr.state !== 'inactive') mr.stop(); } catch (e) { /* 無視 */ }
         if (this.stream) { this.stream.getTracks().forEach((t) => t.stop()); this.stream = null; }
+        return true;
       },
 
       async save(mr, chunks, meta) {
@@ -1187,6 +1199,8 @@
         const over = !reading && state.mode === 'study' && e >= P.totalSec;   // 終了後の超過時間
         $('timer-display').textContent = reading ? formatTime(Math.ceil(this.readLeftMs / 1000)) : over ? '+' + formatTime(e - P.totalSec) : formatTime(e);
         document.body.classList.toggle('is-over', over);
+        document.body.dataset.tstate = this.status;
+        $('btn-stop').textContent = rec.mr ? '■ 録音を保存して終了' : '■ 終了';
 
         const finished = e >= P.totalSec;
         let idx = 0;
@@ -1234,6 +1248,7 @@
         else if (this.status === 'finished' && this.elapsedMs < this.limitMs) {
           // 終了後に巻き戻したときは、続きから再開できる状態に戻す
           this.status = this.elapsedMs === 0 ? 'idle' : 'paused';
+          $('stop-note').textContent = '';
         }
         this.render();
       },
@@ -1294,6 +1309,17 @@
         awake.stop();
       },
 
+      // 一時停止中に「終了」：いまの時間のまま止めて、録音があれば保存する
+      stop() {
+        if (this.status !== 'paused') return;
+        const saved = rec.finish();
+        this.stopTicking();
+        awake.stop();
+        this.status = 'finished';
+        $('stop-note').textContent = saved ? '録音を保存しました（設定画面の「保存した録音」にあります）' : '';
+        this.render();
+      },
+
       // --- 操作 ---
       toggle() {
         audio.unlock();
@@ -1346,6 +1372,7 @@
 
       reset() {
         rec.finish();
+        $('stop-note').textContent = '';
         this.stopTicking();
         audio.stopAll();
         awake.stop();
@@ -1931,6 +1958,7 @@
     }
 
     function init() {
+      $('btn-stop').addEventListener('click', () => timer.stop());
       bindJump('btn-back30', -30);
       bindJump('btn-fwd30', 30);
       // 前回の選択を戻す
