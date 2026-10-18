@@ -393,7 +393,7 @@
       grid-template-rows: minmax(0, 1fr);
       grid-template-areas: "task";
     }
-    body[data-stage="read"] #task-panel { padding-bottom: 170px; }
+    body[data-stage="read"] #task-panel { padding-bottom: 148px; }
     body[data-stage="read"] #timer-section {
       position: fixed; z-index: 30;
       right: calc(12px + env(safe-area-inset-right)); bottom: calc(12px + env(safe-area-inset-bottom));
@@ -402,28 +402,33 @@
       box-shadow: 0 6px 24px rgba(0, 0, 0, 0.45);
     }
     body[data-stage="read"] #read-caption { display: block; }
-    body[data-stage="read"] #timer-display { font-size: min(13vw, 9vh); margin-bottom: 0; }
-    body[data-stage="read"] #controls { margin: 4px 0 6px; }
+    body[data-stage="read"] #timer-section { padding: 8px 12px 10px; }
+    body[data-stage="read"] #read-caption { font-size: 0.65rem; }
+    body[data-stage="read"] #timer-display { font-size: min(9vw, 6vh); margin-bottom: 0; }
+    body[data-stage="read"] #controls { margin: 2px 0 4px; }
+    body[data-stage="read"] #controls button { margin: 0 4px; }
+    body[data-stage="read"] .btn-reset { padding: 4px 14px; font-size: 0.7rem; }
     body[data-stage="read"] .btn-seek,
     body[data-stage="read"] .btn-back,
     body[data-stage="read"] #awake-badge { display: none; }
     body[data-stage="read"] .btn-skip { display: inline-block; }
-    body[data-stage="read"] .btn-start { width: auto; min-width: 100px; padding: 10px 16px; font-size: 1rem; }
-    body[data-stage="read"] .btn-skip { font-size: 1rem; }
+    body[data-stage="read"] .btn-start { width: auto; min-width: 84px; padding: 7px 12px; font-size: 0.85rem; }
+    body[data-stage="read"] .btn-skip { padding: 7px 12px; font-size: 0.85rem; }
     /* 横長では、読む時間も「左に課題文・右に小さなタイマー」の2列にして、課題文を隠さない */
     @media (orientation: landscape) and (min-width: 640px) {
       body[data-stage="read"] #app,
       body[data-mode="exam"][data-stage="read"] #app {
-        grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr);
+        grid-template-columns: minmax(0, 2.6fr) minmax(0, 1fr);
         grid-template-areas: "task timer";
       }
       body[data-stage="read"] #task-panel { padding-bottom: 18px; }
       body[data-stage="read"] #timer-section {
         position: relative; right: auto; bottom: auto; z-index: 10;
-        padding: calc(40px + env(safe-area-inset-top)) env(safe-area-inset-right) 14px 0;
+        padding: 14px env(safe-area-inset-right) 14px 0;
         border: 0; border-radius: 0; box-shadow: none; background: var(--timer-bg);
       }
-      body[data-stage="read"] #timer-display { font-size: min(15vw, 28vh); }
+      body[data-stage="read"] #timer-display { font-size: min(8vw, 20vh); }
+      body[data-stage="read"] .btn-start, body[data-stage="read"] .btn-skip { font-size: 0.8rem; padding: 7px 10px; }
     }
     .btn-back.is-armed, .btn-reset.is-armed { color: #fff; background: #b00020; border-color: #b00020; }
   </style>
@@ -1009,8 +1014,20 @@
     function fitTask() {
       const p = $('task-panel');
       p.style.fontSize = '';
-      if (state.mode !== 'exam' || !window.matchMedia(LANDSCAPE).matches) return;
+      if (state.mode !== 'exam') return;
       if (getComputedStyle(p).display === 'none') return;
+      // 読む時間：画面いっぱいに収まる最大の大きさまで、課題文を大きくする
+      if (document.body.dataset.stage === 'read') {
+        let size = 12;
+        p.style.fontSize = size + 'px';
+        while (size < 34) {
+          p.style.fontSize = (size + 0.5) + 'px';
+          if (p.scrollHeight > p.clientHeight + 1) { p.style.fontSize = size + 'px'; break; }
+          size += 0.5;
+        }
+        return;
+      }
+      if (!window.matchMedia(LANDSCAPE).matches) return;
       let fs = parseFloat(getComputedStyle(p).fontSize);
       while (p.scrollHeight > p.clientHeight + 1 && fs > 9) { fs -= 0.5; p.style.fontSize = fs + 'px'; }
     }
