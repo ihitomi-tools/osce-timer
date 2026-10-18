@@ -177,6 +177,7 @@
     #import-status[data-state="ok"] { color: var(--accent); }
     #import-status[data-state="error"] { color: var(--note); }
 
+    .pre-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 10px; }
     details.manual { margin: -8px 0 30px; }
     details.manual summary { cursor: pointer; font-size: 0.82rem; color: var(--text-sub); }
     details.manual .manual-body { margin-top: 12px; display: grid; gap: 10px; }
@@ -507,7 +508,20 @@
       </div>
     </fieldset>
 
-    <div class="field">
+    <div class="field" id="field-pre" hidden>
+      <label class="label" for="pre-select">患者情報</label>
+      <select id="pre-select" class="select-box"></select>
+      <div class="pre-grid">
+        <input type="text" id="pre-last" class="text-box" aria-label="姓" placeholder="姓（〇〇）" autocomplete="off">
+        <input type="text" id="pre-first" class="text-box" aria-label="名" placeholder="名（〇〇）" autocomplete="off">
+        <input type="text" id="pre-age" class="text-box" aria-label="年齢" placeholder="年齢（歳）" inputmode="numeric" autocomplete="off">
+        <select id="pre-sex" class="select-box" aria-label="性別"><option value="女性">女性</option><option value="男性">男性</option></select>
+      </div>
+      <div class="row" style="margin-top:10px"><button type="button" class="btn-sub is-quiet" id="pre-del" hidden>この患者情報を消す</button></div>
+      <p class="help">入力した患者情報は、この端末に保存されます。不要になったら、保存したものを選んで消せます。</p>
+    </div>
+
+    <div class="field" id="field-post">
       <label class="label" for="scenario-select">課題文</label>
       <select id="scenario-select" class="select-box"></select>
       <div class="row" style="margin-top:10px">
@@ -613,8 +627,14 @@
         label: 'PreCC 10分',
         totalSec: 10 * 60,
         warnSec: 8 * 60,
-        defaultNote: '',
-        blocks: [{ id: 'interview', title: '医療面接と身体診察', minutes: 10, startSec: 0, body: '' }],
+        defaultNote: [
+          '順序立った、流れに沿った円滑な医療面接を心がけてください。',
+          '必要があればメモを取ってください。メモ用紙は、面接終了後回収します。持ち出さないでください。試験開始前のメモ用紙の使用は禁止します。',
+          '必要な場合は試験開始前に患者さんと自分の椅子を適切な位置と向きに調整しても構いません。',
+        ],
+        blocks: [{ id: 'interview', title: '医療面接', minutes: 10, startSec: 0,
+          body: ['下記の項目（●）の医療面接を行ってください。', '制限時間は10分間です。'],
+          bullets: ['導入：オープニング', '良好なコミュニケーション', '医学的情報を聞く', '心理・社会的情報を聞く', '締めくくり'] }],
         cues: [
           { id: 'start', file: 'precc-start.mp3', kind: 'intro' },                               // 「試験を開始してください」
           { id: 'warn',  file: 'precc-2min.mp3',  kind: 'endAt', at: 8 * 60, lead: 3 },        // 「試験は残り2分です」
@@ -1032,7 +1052,7 @@
         if (b.body || b.bullets) {
           const bd = document.createElement('div');
           bd.className = 'block-body';
-          if (b.body) { const tx = document.createElement('div'); tx.className = 'block-text'; tx.textContent = b.body; bd.appendChild(tx); }
+          [].concat(b.body || []).forEach((line) => { const tx = document.createElement('div'); tx.className = 'block-text'; tx.textContent = line; bd.appendChild(tx); });
           if (b.bullets) {
             const ul = document.createElement('ul');
             b.bullets.forEach((x) => { const li = document.createElement('li'); li.textContent = x; ul.appendChild(li); });
@@ -1044,7 +1064,7 @@
         body.appendChild(div);
       });
 
-      const note = s && s.note && s.note.length ? s.note : (P.defaultNote ? [P.defaultNote] : []);
+      const note = s && s.note && s.note.length ? s.note : (P.defaultNote ? [].concat(P.defaultNote) : []);
       note.forEach((t) => addP(body, 't-note', t));
 
       const tag = (s && s.tag) || '';
@@ -1223,6 +1243,48 @@
       };
     }
 
+    /* PreCC：患者情報だけ手入力（原文どおり「患者：〇〇 〇〇さん　歳　女性」）。入力したものは端末に覚えておく */
+    const PRE_MAX = 6;
+    const pre = { list: [] };
+    const preKey = (p) => [p.last, p.first, p.age, p.sex].join('|');
+    const preLabel = (p) => `${p.last} ${p.first}さん${p.age ? '　' + p.age + '歳' : ''}　${p.sex}`.trim();
+    function preFromFields() {
+      return { last: $('pre-last').value.trim(), first: $('pre-first').value.trim(), age: $('pre-age').value.trim().replace(/[^0-9０-９]/g, ''), sex: $('pre-sex').value };
+    }
+    function preScenario() {
+      const p = preFromFields();
+      if (!p.last && !p.first) return null;
+      const name = `${p.last} ${p.first}`.trim();
+      return {
+        tag: '', situation: [],
+        patient: `患者：${name}さん${p.age ? '　' + p.age + '歳' : ''}　${p.sex}`,
+        supplement: [`${p.last || name}さんは初めて外来を受診されました。`], note: [],
+      };
+    }
+    function buildPreOptions(selected) {
+      const sel = $('pre-select');
+      sel.textContent = '';
+      const add = (v, l) => { const o = document.createElement('option'); o.value = v; o.textContent = l; sel.appendChild(o); };
+      add('new', pre.list.length ? '新しく入力する' : '新しく入力する（空欄なら表示なし）');
+      pre.list.forEach((p, i) => add('p' + i, preLabel(p)));
+      sel.value = Array.from(sel.options).some((o) => o.value === selected) ? selected : 'new';
+      $('pre-del').hidden = sel.value === 'new';
+    }
+    function preFill(p) {
+      $('pre-last').value = p ? p.last : ''; $('pre-first').value = p ? p.first : '';
+      $('pre-age').value = p ? p.age : ''; $('pre-sex').value = p ? p.sex : '女性';
+    }
+    function preRemember() {   // タイマー画面へ進むときに、新しい患者情報を保存する
+      const p = preFromFields();
+      if (!p.last && !p.first) return;
+      const i = pre.list.findIndex((q) => preKey(q) === preKey(p));
+      if (i >= 0) { buildPreOptions('p' + i); return; }
+      pre.list.unshift(p);
+      pre.list = pre.list.slice(0, PRE_MAX);
+      store.set('osce.pre', pre.list);
+      buildPreOptions('p0');
+    }
+
     function buildScenarioOptions(selected) {
       const sel = $('scenario-select');
       sel.textContent = '';
@@ -1258,7 +1320,12 @@
       state.readSec = (mode === 'exam' && entry === 'room') ? READ_SEC : 0;
       $('field-entry').hidden = mode !== 'exam';
       state.preset = PRESETS[presetKey] || PRESETS.postcc16;
-      state.scenario = v === 'manual' ? manualScenario()
+      const isPre = presetKey === 'precc10';
+      $('field-pre').hidden = !isPre;
+      $('field-post').hidden = isPre;
+      $('manual').hidden = isPre;
+      state.scenario = isPre ? preScenario()
+                    : v === 'manual' ? manualScenario()
                     : /^s\d+$/.test(v) ? session.scenarios[Number(v.slice(1))] || null
                     : null;
       document.body.dataset.mode = mode;
@@ -1267,6 +1334,7 @@
     }
 
     function showTimerScreen() {
+      if ($('pre-select')) { applySelection(); if (state.preset === PRESETS.precc10) preRemember(); }
       applySelection();
       audio.load(state.preset);
       audio.unlock();
@@ -1355,6 +1423,21 @@
       if (prefs.mode) check('mode', prefs.mode);
       if (prefs.entry) check('entry', prefs.entry);
       buildScenarioOptions(prefs.scenario);
+      pre.list = (store.get('osce.pre', []) || []).filter((p) => p && (p.last || p.first)).slice(0, PRE_MAX);
+      buildPreOptions('new');
+      $('pre-select').addEventListener('change', () => {
+        const v = $('pre-select').value;
+        preFill(/^p\d+$/.test(v) ? pre.list[Number(v.slice(1))] : null);
+        $('pre-del').hidden = v === 'new';
+      });
+      ['pre-last', 'pre-first', 'pre-age', 'pre-sex'].forEach((id) => $(id).addEventListener('input', () => { $('pre-select').value = 'new'; $('pre-del').hidden = true; }));
+      $('pre-del').addEventListener('click', () => {
+        const v = $('pre-select').value;
+        if (!/^p\d+$/.test(v)) return;
+        pre.list.splice(Number(v.slice(1)), 1);
+        store.set('osce.pre', pre.list);
+        preFill(null); buildPreOptions('new');
+      });
       refreshImportStatus();
 
       // 時間の種類を選んだ時点で音声を用意（このタップでiPhoneの音声許可も済ませる）
