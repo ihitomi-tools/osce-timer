@@ -348,6 +348,20 @@
     #task-mini svg { display: block; width: 22px; height: 22px; margin: 0 auto 2px; fill: currentColor; opacity: 0.8; }
     #task-mini .mini-tag { display: block; color: #8a8f99; }
     body[data-mode="exam"][data-stage="run"] #task-mini { display: block; }
+    /* 状況・患者情報があるときは、アイコンの代わりにその2行を残す（タップで全文） */
+    #task-mini .mini-info { display: none; }
+    #task-mini.has-info {
+      display: none; left: calc(10px + env(safe-area-inset-left)); right: calc(10px + env(safe-area-inset-right));
+      width: auto; max-width: 520px; padding: 9px 12px 9px 14px; text-align: left; font-size: 0.95rem; line-height: 1.45; color: #e6e8ec;
+      align-items: center; gap: 10px;
+    }
+    body[data-mode="exam"][data-stage="run"] #task-mini.has-info { display: flex; }
+    #task-mini.has-info > svg, #task-mini.has-info > .mini-label { display: none; }
+    #task-mini.has-info .mini-info { display: block; flex: 1; min-width: 0; }
+    #task-mini .mini-info b { display: block; font-weight: 700; }
+    #task-mini .mini-more { display: none; flex: none; font-size: 0.68rem; line-height: 1.2; color: #8a8f99; text-align: center; }
+    #task-mini.has-info .mini-more { display: block; }
+    #task-mini .mini-more svg { display: block; width: 20px; height: 20px; margin: 0 auto 2px; fill: currentColor; opacity: 0.8; }
     body.peeking #task-mini { display: none !important; }
 
     /* ============================================================
@@ -391,6 +405,9 @@
       body[data-mode="exam"][data-stage="run"] #timer-display { font-size: min(30vw, 52vh); }
       body[data-mode="study"] #timer-display { font-size: min(13.5vw, 40vh); }
       #timer-section { padding-top: calc(40px + env(safe-area-inset-top)); padding-right: env(safe-area-inset-right); }
+      /* 状況・患者情報のカードを残すぶん、数字を少し下げて小さくする */
+      body[data-mode="exam"][data-stage="run"]:has(#task-mini.has-info) #timer-section { padding-top: calc(84px + env(safe-area-inset-top)); }
+      body[data-mode="exam"][data-stage="run"]:has(#task-mini.has-info) #timer-display { font-size: min(30vw, 42vh); }
     }
     body[data-phase="warn"]     #timer-display { color: var(--timer-warn); }
     body[data-phase="report"]   #timer-display { color: var(--timer-phase2); }
@@ -611,7 +628,9 @@
 
     <button type="button" id="task-mini" aria-label="課題文を見る">
       <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 2h9l5 5v15H6zM14 3.5V8h4.5zM8.5 12h8v1.5h-8zm0 3.5h8V17h-8z"/></svg>
-      課題文<span class="mini-tag" id="mini-tag"></span>
+      <span class="mini-label">課題文</span><span class="mini-tag" id="mini-tag"></span>
+      <span class="mini-info" id="mini-info"></span>
+      <span class="mini-more"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 2h9l5 5v15H6zM14 3.5V8h4.5zM8.5 12h8v1.5h-8zm0 3.5h8V17h-8z"/></svg>全文</span>
     </button>
   </div>
 
@@ -1097,6 +1116,14 @@
 
       const note = s && s.note && s.note.length ? s.note : (P.defaultNote ? [].concat(P.defaultNote) : []);
       note.forEach((t) => addP(body, 't-note', t));
+
+      // タイマーだけの画面に残す、状況と患者情報
+      const info = $('mini-info');
+      info.textContent = '';
+      const sit = s ? (s.situation || []).join('') : '';
+      if (sit) info.appendChild(document.createTextNode(sit));
+      if (s && s.patient) { const b = document.createElement('b'); b.textContent = s.patient; info.appendChild(b); }
+      $('task-mini').classList.toggle('has-info', !!(sit || (s && s.patient)));
 
       const tag = (s && s.tag) || '';
       $('task-tag').textContent = tag;
