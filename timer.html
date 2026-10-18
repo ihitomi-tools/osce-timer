@@ -21,13 +21,13 @@
        フォント（アプリに同梱。電波がなくても同じ見た目で表示されます）
        ============================================================ */
     @font-face {
-      font-family: "BIZ UDGothic";
-      src: url("BIZUDGothic-Regular.woff2") format("woff2");
+      font-family: "M PLUS 1p";
+      src: url("MPLUS1p-Regular.woff2") format("woff2");
       font-weight: 400; font-style: normal; font-display: swap;
     }
     @font-face {
-      font-family: "BIZ UDGothic";
-      src: url("BIZUDGothic-Bold.woff2") format("woff2");
+      font-family: "M PLUS 1p";
+      src: url("MPLUS1p-Bold.woff2") format("woff2");
       font-weight: 700; font-style: normal; font-display: swap;
     }
 
@@ -35,17 +35,18 @@
        色（ライト／ダークは端末の設定に自動で合わせます）
        ============================================================ */
     :root {
-      --font: "BIZ UDGothic", "BIZ UDPGothic", "Hiragino Sans", "Yu Gothic", sans-serif;
+      --font: "M PLUS 1p", "Hiragino Sans", "Yu Gothic", sans-serif;
 
-      --bg: #f8f9fa;
+      --bg: #f6f6f3;
       --surface: #ffffff;
-      --surface-pressed: #f0f0f0;
-      --text: #333333;
-      --text-sub: #666666;
-      --line: #cccccc;
-      --accent: #0066cc;
-      --accent-soft: #e6f7ff;
-      --note: #d84315;
+      --surface-pressed: #eeeeea;
+      --text: #1d2026;
+      --text-sub: #6a6f78;
+      --line: #dcdcd6;
+      --accent: #2b3a67;
+      --accent-soft: #e9ecf5;
+      --on-accent: #ffffff;
+      --note: #b4472a;
 
       /* タイマー部分は常に黒背景 */
       --timer-bg: #000000;
@@ -65,15 +66,16 @@
     }
     @media (prefers-color-scheme: dark) {
       :root {
-        --bg: #121316;
-        --surface: #1d1f24;
-        --surface-pressed: #2a2d34;
-        --text: #e6e8ec;
-        --text-sub: #a0a5ae;
-        --line: #3a3d45;
-        --accent: #5aa9ff;
-        --accent-soft: #14283d;
-        --note: #ff8a65;
+        --bg: #0e1013;
+        --surface: #171a1f;
+        --surface-pressed: #20242b;
+        --text: #e8e9ec;
+        --text-sub: #9aa0aa;
+        --line: #2b2f37;
+        --accent: #9db0e6;
+        --accent-soft: #1a2236;
+        --on-accent: #0e1013;
+        --note: #ff9a78;
       }
     }
 
@@ -111,72 +113,93 @@
     #setup-screen {
       height: 100%;
       overflow-y: auto;
-      padding: calc(24px + env(safe-area-inset-top)) 20px calc(24px + env(safe-area-inset-bottom));
+      padding: calc(36px + env(safe-area-inset-top)) 24px calc(32px + env(safe-area-inset-bottom));
     }
-    .setup-inner { max-width: 420px; margin: 0 auto; }
-    #setup-screen h1 { margin: 0 0 22px; font-size: 1.5rem; text-align: center; }
-    .field { margin: 0 0 20px; padding: 0; border: 0; min-width: 0; }
+    .setup-inner { max-width: 440px; margin: 0 auto; }
+    .setup-head { margin: 0 0 34px; padding-bottom: 22px; border-bottom: 1px solid var(--line); }
+    .eyebrow { margin: 0 0 6px; font-size: 0.72rem; font-weight: 700; letter-spacing: 0.28em; color: var(--accent); }
+    #setup-screen h1 { margin: 0; font-size: 1.7rem; font-weight: 700; letter-spacing: 0.04em; line-height: 1.25; }
+
+    .field { margin: 0 0 28px; padding: 0; border: 0; min-width: 0; }
     .field > legend, .field > .label {
-      display: block; margin: 0 0 8px; padding: 0;
-      font-size: 0.85rem; font-weight: 700; color: var(--text-sub);
+      display: block; margin: 0 0 10px; padding: 0;
+      font-size: 0.78rem; font-weight: 700; letter-spacing: 0.12em; color: var(--text-sub);
     }
 
-    /* 3択・2択のボタン */
-    .seg { display: flex; gap: 8px; }
+    /* 選択ボタン：1本の枠の中で、選んだものだけ塗る */
+    .seg { position: relative; display: flex; padding: 3px; background: var(--surface); border: 1px solid var(--line); border-radius: 12px; isolation: isolate; }
+    /* 横にスライドして選ぶ「つまみ」 */
+    .seg::before {
+      content: ""; position: absolute; z-index: -1; top: 3px; bottom: 3px; left: 3px;
+      width: calc((100% - 6px) / 2); border-radius: 9px;
+      background: var(--accent);
+      box-shadow: 0 0 14px color-mix(in srgb, var(--accent) 45%, transparent);
+      transition: transform 0.32s cubic-bezier(0.34, 1.25, 0.5, 1);
+    }
+    .seg:has(label:nth-child(2) input:checked)::before { transform: translateX(100%); }
     .seg label { flex: 1; min-width: 0; }
     .seg input { position: absolute; opacity: 0; pointer-events: none; }
     .seg span {
-      display: block; padding: 12px 6px;
-      text-align: center; font-size: 1rem; font-weight: 700; line-height: 1.3;
-      color: var(--text); background: var(--surface);
-      border: 2px solid var(--line); border-radius: 12px;
+      display: block; padding: 11px 6px 10px;
+      text-align: center; font-size: 0.98rem; font-weight: 700; line-height: 1.3;
+      color: var(--text); border-radius: 9px;
+      transition: color 0.25s ease;
     }
-    .seg small { display: block; margin-top: 2px; font-size: 0.72rem; font-weight: 400; color: var(--text-sub); }
-    .seg input:checked + span { color: var(--accent); background: var(--accent-soft); border-color: var(--accent); }
-    .seg input:checked + span small { color: inherit; }
-    .seg input:focus-visible + span { outline: 3px solid var(--accent); outline-offset: 2px; }
+    @media (prefers-reduced-motion: reduce) { .seg::before, .seg span { transition: none; } }
+    .seg small { display: block; margin-top: 3px; font-size: 0.7rem; font-weight: 400; letter-spacing: 0.02em; color: var(--text-sub); }
+    .seg input:checked + span { color: var(--on-accent); }
+    .seg input:checked + span small { color: inherit; opacity: 0.8; }
+    .seg input:focus-visible + span { outline: 2px solid var(--accent); outline-offset: 2px; }
 
     .select-box, .text-box {
-      width: 100%; padding: 13px 12px;
+      width: 100%; padding: 14px 14px;
       font-size: 1rem; color: var(--text); background: var(--surface);
-      border: 2px solid var(--line); border-radius: 10px;
+      border: 1px solid var(--line); border-radius: 12px;
+    }
+    .select-box {
+      appearance: none; -webkit-appearance: none; padding-right: 40px;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1.5l5 5 5-5' fill='none' stroke='%238a8f98' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+      background-repeat: no-repeat; background-position: right 15px center;
     }
     textarea.text-box { resize: vertical; min-height: 64px; line-height: 1.5; }
-    .select-box:focus, .text-box:focus { outline: none; border-color: var(--accent); }
+    .select-box:focus, .text-box:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
 
     .btn-file, .btn-sub {
-      display: inline-block; padding: 10px 16px;
-      font-size: 0.95rem; font-weight: 700; color: var(--accent);
-      background: transparent; border: 2px solid var(--accent); border-radius: 22px;
+      display: inline-block; padding: 9px 16px;
+      font-size: 0.88rem; font-weight: 700; color: var(--text);
+      background: transparent; border: 1px solid var(--line); border-radius: 10px;
     }
+    .btn-file:active, .btn-sub:active { background: var(--surface-pressed); }
     .btn-file input { display: none; }
-    .btn-sub.is-quiet { color: var(--text-sub); border-color: var(--line); }
+    .btn-sub.is-quiet { color: var(--text-sub); }
     .row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
-    .help { margin: 8px 0 0; font-size: 0.8rem; line-height: 1.6; color: var(--text-sub); }
-    #import-status[data-state="ok"] { color: #28a745; }
+    .help { margin: 10px 0 0; font-size: 0.78rem; line-height: 1.7; color: var(--text-sub); }
+    #import-status[data-state="ok"] { color: var(--accent); }
     #import-status[data-state="error"] { color: var(--note); }
 
-    details.manual { margin: 0 0 20px; }
-    details.manual summary { cursor: pointer; font-size: 0.9rem; font-weight: 700; color: var(--text-sub); }
-    details.manual .manual-body { margin-top: 10px; display: grid; gap: 10px; }
+    details.manual { margin: -8px 0 30px; }
+    details.manual summary { cursor: pointer; font-size: 0.82rem; color: var(--text-sub); }
+    details.manual .manual-body { margin-top: 12px; display: grid; gap: 10px; }
     .chips { display: flex; gap: 6px; flex-wrap: wrap; }
     .chips button {
-      padding: 5px 12px; font-size: 0.8rem; color: var(--text-sub);
+      padding: 5px 12px; font-size: 0.78rem; color: var(--text-sub);
       background: transparent; border: 1px solid var(--line); border-radius: 14px;
     }
 
     .btn-next {
-      display: block; width: 100%; margin-top: 8px; padding: 16px 40px;
-      font-size: 1.2rem; font-weight: 700; color: #fff;
-      background: var(--accent); border: none; border-radius: 30px;
-      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.15);
+      display: block; width: 100%; margin-top: 4px; padding: 17px 24px;
+      font-size: 1.05rem; font-weight: 700; letter-spacing: 0.12em; color: var(--on-accent);
+      background: var(--accent); border: none; border-radius: 14px;
     }
-    .btn-next:active { transform: translateY(2px); }
+    .btn-next:active { opacity: 0.88; transform: translateY(1px); }
 
-    #offline-status { margin: 24px 0 0; font-size: 0.85rem; line-height: 1.6; text-align: center; color: var(--text-sub); }
-    #offline-status[data-state="ready"] { color: #28a745; }
+    .setup-foot { margin-top: 30px; padding-top: 18px; border-top: 1px solid var(--line); }
+    #offline-status { margin: 0; font-size: 0.78rem; line-height: 1.6; color: var(--text-sub); }
+    #offline-status::before { content: ""; display: inline-block; width: 7px; height: 7px; margin-right: 8px; border-radius: 50%; background: var(--line); vertical-align: 1px; }
+    #offline-status[data-state="ready"]::before { background: #3f9d6b; }
     #offline-status[data-state="error"] { color: var(--note); }
-    #offline-hint { margin: 6px 0 0; font-size: 0.8rem; line-height: 1.6; text-align: center; color: var(--text-sub); }
+    #offline-status[data-state="error"]::before { background: var(--note); }
+    #offline-hint { margin: 8px 0 0; font-size: 0.76rem; line-height: 1.7; color: var(--text-sub); }
 
     /* ============================================================
        タイマー画面の骨組み
@@ -441,7 +464,10 @@
   <!-- ===================== 設定画面 ===================== -->
   <main id="setup-screen">
    <div class="setup-inner">
-    <h1>OSCE 学習会タイマー</h1>
+    <header class="setup-head">
+      <p class="eyebrow">OSCE</p>
+      <h1>学習会タイマー</h1>
+    </header>
 
     <fieldset class="field">
       <legend>時間</legend>
@@ -493,8 +519,10 @@
     </details>
 
     <button type="button" class="btn-next" id="go-timer">タイマー画面へ</button>
+    <div class="setup-foot">
     <p id="offline-status" data-state="checking" role="status">オフライン準備中…</p>
     <p id="offline-hint" hidden>ホーム画面に追加しておくと、端末に保存されたデータが消えにくくなります（共有ボタン →「ホーム画面に追加」）。</p>
+    </div>
    </div>
   </main>
 
@@ -1363,7 +1391,7 @@
       statusEl: $('offline-status'),
       messages: {
         checking:    'オフライン準備中…',
-        ready:       '✓ オフラインで使えます',
+        ready:       'オフラインで使えます',
         error:       'オフラインの準備に失敗しました。電波のある場所で開き直してください。',
         unsupported: 'このブラウザではオフライン保存が使えません。',
       },
