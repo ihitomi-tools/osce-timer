@@ -488,6 +488,11 @@
       body[data-mode="exam"][data-stage="run"]:has(#task-mini.has-info) #awake-badge { left: auto; right: calc(14px + env(safe-area-inset-right)); transform: none; }
       body[data-mode="exam"][data-stage="run"]:has(#task-mini.has-info) #timer-section { padding-top: calc(84px + env(safe-area-inset-top)); }
       body[data-mode="exam"][data-stage="run"]:has(#task-mini.has-info) #timer-display { font-size: min(30vw, 42vh); }
+      /* 終了後も録音が続くときは、「録音を保存して終了」のぶん、数字を少し小さくする */
+      body[data-tail="1"][data-mode="exam"][data-stage="run"] #timer-display { font-size: min(24vw, 27vh) !important; }
+      body[data-tail="1"] #timer-section { padding-top: calc(60px + env(safe-area-inset-top)); }
+      body[data-tail="1"] .btn-stop { margin-bottom: 6px; padding: 9px 0; }
+      body[data-tail="1"] #stop-wrap + div { margin-bottom: 2px; }
     }
     /* 学習会仕様：「課題文」を大きく見せるか、「タイマー」を大きく見せるかの切り替え */
     #btn-view {
@@ -556,7 +561,8 @@
     #stop-wrap { text-align: center; }
     .btn-stop { display: none; width: 230px; max-width: 86vw; margin: 0 auto 8px; padding: 11px 0; font-size: 0.95rem; font-weight: 700; color: #fff; background: #b3262f; border: none; border-radius: 24px; }
     .btn-stop:active { opacity: 0.85; }
-    body[data-mode="study"][data-tstate="paused"] .btn-stop { display: block; }
+    body[data-mode="study"][data-tstate="paused"] .btn-stop,
+    body[data-tail="1"] .btn-stop { display: block; }
     #stop-note { margin: 0 0 8px; font-size: 0.8rem; color: var(--timer-sub); }
     #stop-note:empty { display: none; }
     #read-caption { display: none; font-size: 0.8rem; color: var(--timer-sub); }
@@ -825,6 +831,7 @@
     };
 
     const READ_FILE = 'reading_assignment.mp3';   // 入室の案内「課題文を読み、試験開始の合図を待ってください」（読む時間の頭で流す）
+    let REC_TAIL_MS = 15 * 60 * 1000;   // 試験仕様：終了後も録音を続ける最長の時間
     const READ_SEC = 60;         // 「入室から」で、課題文を読む時間
     const PEEK_SEC = 5;          // 課題文を拡大して見せる秒数
     const ARM_MS = 3000;         // 「もう一度タップ」の待ち時間
@@ -1299,11 +1306,37 @@
       },
 
       finish() {
-        rec.finish();
+        // 試験仕様で録音中なら、16:00のあとも録音を続ける（講評まで残すため）。止めるのは「録音を保存して終了」か、15分たったとき
+        if (rec.mr && state.mode === 'exam') this.startTail();
+        else rec.finish();
         this.status = 'finished';
         this.elapsedMs = this.limitMs;
         this.stopTicking();
+        if (!this.tailId) awake.stop();
+      },
+
+      // --- 試験仕様：終了後も続く録音（講評など） ---
+      tailId: null, tailCap: null, tailStart: 0,
+      startTail() {
+        this.tailStart = performance.now();
+        document.body.dataset.tail = '1';
+        const upd = () => {
+          const sec = Math.floor((performance.now() - this.tailStart) / 1000);
+          $('rec-badge').textContent = `録音中　終了から＋${formatTime(sec)}`;
+        };
+        upd();
+        this.tailId = setInterval(upd, 500);
+        this.tailCap = setTimeout(() => this.endTail(true), REC_TAIL_MS);
+      },
+      endTail(auto) {
+        if (!this.tailId) return;
+        clearInterval(this.tailId); clearTimeout(this.tailCap);
+        this.tailId = null; this.tailCap = null;
+        delete document.body.dataset.tail;
+        const saved = rec.finish();
         awake.stop();
+        $('stop-note').textContent = saved ? (auto ? '15分たったので、録音を保存して止めました（設定画面の「保存した録音」にあります）' : '録音を保存しました（設定画面の「保存した録音」にあります）') : '';
+        this.render();
       },
 
       // 一時停止中に「終了」：いまの時間のまま止めて、録音があれば保存する
@@ -1368,6 +1401,7 @@
       },
 
       reset() {
+        if (this.tailId) { clearInterval(this.tailId); clearTimeout(this.tailCap); this.tailId = null; this.tailCap = null; delete document.body.dataset.tail; }
         rec.finish();
         $('stop-note').textContent = '';
         this.stopTicking();
@@ -1955,7 +1989,7 @@
     }
 
     function init() {
-      $('btn-stop').addEventListener('click', () => timer.stop());
+      $('btn-stop').addEventListener('click', () => { if (timer.tailId) timer.endTail(false); else timer.stop(); });
       bindJump('btn-back30', -30);
       bindJump('btn-fwd30', 30);
       // 前回の選択を戻す
