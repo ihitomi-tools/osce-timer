@@ -13,7 +13,7 @@
    - ファイルを追加・削除したら、PRECACHE の一覧も直してください。
    ============================================================== */
 
-const VERSION = 'v14';
+const VERSION = 'v17';
 const CACHE_PREFIX = 'osce-timer-';
 const CACHE_NAME = CACHE_PREFIX + VERSION;
 
@@ -22,6 +22,8 @@ const PRECACHE = [
   './timer.html',
   './manifest.json',
   './jszip.min.js',
+  './pdf.min.js',
+  './pdf.worker.min.js',
   './awake.mp4',
   './start.mp3',
   './10min.mp3',

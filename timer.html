@@ -131,12 +131,13 @@
     /* 横にスライドして選ぶ「つまみ」 */
     .seg::before {
       content: ""; position: absolute; z-index: -1; top: 3px; bottom: 3px; left: 3px;
-      width: calc((100% - 6px) / 2); border-radius: 9px;
+      width: calc((100% - 6px) / var(--n, 2)); border-radius: 9px;
       background: var(--accent);
       box-shadow: 0 0 14px color-mix(in srgb, var(--accent) 45%, transparent);
       transition: transform 0.32s cubic-bezier(0.34, 1.25, 0.5, 1);
     }
     .seg:has(label:nth-child(2) input:checked)::before { transform: translateX(100%); }
+    .seg:has(label:nth-child(3) input:checked)::before { transform: translateX(200%); }
     .seg label { flex: 1; min-width: 0; }
     .seg input { position: absolute; opacity: 0; pointer-events: none; }
     .seg span {
@@ -178,14 +179,17 @@
     #import-status[data-state="error"] { color: var(--note); }
 
     .pre-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 10px; }
-    details.manual { margin: -8px 0 30px; }
-    details.manual summary { cursor: pointer; font-size: 0.82rem; color: var(--text-sub); }
-    details.manual .manual-body { margin-top: 12px; display: grid; gap: 10px; }
     .chips { display: flex; gap: 6px; flex-wrap: wrap; }
     .chips button {
-      padding: 5px 12px; font-size: 0.78rem; color: var(--text-sub);
-      background: transparent; border: 1px solid var(--line); border-radius: 14px;
+      padding: 6px 14px; font-size: 0.82rem; color: var(--text-sub);
+      background: transparent; border: 1px solid var(--line); border-radius: 16px;
+      transition: background 0.2s ease, color 0.2s ease, border-color 0.2s ease;
     }
+    .chips button.is-on { font-weight: 700; color: var(--on-accent); background: var(--accent); border-color: var(--accent); box-shadow: 0 0 10px color-mix(in srgb, var(--accent) 40%, transparent); }
+    #seg-src span { font-size: 0.9rem; white-space: nowrap; }
+    .src-panel { margin-top: 14px; }
+    .src-panel[hidden] { display: none; }
+    .manual-body { display: grid; gap: 10px; }
 
     .btn-next {
       display: block; width: 100%; margin-top: 4px; padding: 17px 24px;
@@ -217,12 +221,12 @@
     #task-panel  { grid-area: task; }
     #timer-section { grid-area: timer; }
 
-    /* 学習会想定・縦：タイマーが上、文章が下 */
+    /* 学習会仕様・縦：タイマーが上、文章が下 */
     body[data-mode="study"] #app {
       grid-template-rows: auto minmax(0, 1fr);
       grid-template-areas: "timer" "task";
     }
-    /* 試験想定・開始後：課題文は隅に小さく、タイマーだけを大きく */
+    /* 試験仕様・開始後：課題文は隅に小さく、タイマーだけを大きく */
     body[data-mode="exam"][data-stage="run"] #app {
       grid-template-rows: minmax(0, 1fr);
       grid-template-areas: "timer";
@@ -287,12 +291,12 @@
     .block-body { font-size: 0.9em; }
     .block-body ul { margin: 0.3em 0 0; padding-left: 1.3em; }
 
-    /* 学習会想定：いまの場面が分かるように、他は薄くする。タップでジャンプ */
+    /* 学習会仕様：いまの場面が分かるように、他は薄くする。タップでジャンプ */
     body[data-mode="study"] .instruction-block { opacity: 0.5; cursor: pointer; transition: opacity 0.3s ease, background 0.3s ease; }
     body[data-mode="study"] .instruction-block:active { transform: scale(0.98); background: var(--surface-pressed); }
     body[data-mode="study"] .instruction-block.is-active { opacity: 1; background: var(--accent-soft); border-left-color: var(--accent); }
 
-    /* 試験想定：パワーポイントの課題文スライドのように、箇条書きで大きく表示（シナリオ番号は出さない） */
+    /* 試験仕様：パワーポイントの課題文スライドのように、箇条書きで大きく表示（シナリオ番号は出さない） */
     body[data-mode="exam"] .task-tag, body[data-mode="exam"] .mini-tag { display: none; }
     body[data-mode="exam"] #task-body { line-height: 1.55; }
     body[data-mode="exam"] #task-body p,
@@ -316,7 +320,7 @@
     body[data-mode="exam"] .block-body li { margin: 0 0 0.2em; padding-left: 2.1em; }
     body[data-mode="exam"] .block-body li::before { content: "•"; position: absolute; left: 1.1em; color: var(--accent); }
 
-    /* 試験想定・開始後：隅の小さなカード → タップで数秒だけ拡大 */
+    /* 試験仕様・開始後：隅の小さなカード → タップで数秒だけ拡大 */
     body[data-mode="exam"][data-stage="run"] #task-panel { display: none; }
     body[data-mode="exam"][data-stage="run"] #task-panel.is-peek {
       display: block; position: fixed; z-index: 50;
@@ -405,7 +409,7 @@
     .btn-seek:active, .btn-seek.is-pressed { background: var(--btn-seek-pressed); }
     .btn-seek svg { width: 26px; height: 26px; fill: currentColor; pointer-events: none; }
 
-    /* 30秒ずつ戻る／進む（学習会想定のときだけ表示） */
+    /* 30秒ずつ戻る／進む（学習会仕様のときだけ表示） */
     #controls .btn-jump { display: none; width: 52px; height: 46px; padding: 0; background: transparent; border: 1px solid #4a4e58; border-radius: 30px; font-variant-numeric: tabular-nums; font-size: 1rem; }
     .btn-jump:active { background: var(--btn-seek-pressed); }
     body[data-mode="study"]:not([data-stage="read"]) #controls .btn-jump { display: block; }
@@ -503,8 +507,8 @@
     <fieldset class="field">
       <legend>見え方</legend>
       <div class="seg" id="seg-mode">
-        <label><input type="radio" name="mode" value="study" checked><span>学習会想定<small>場面を常に表示</small></span></label>
-        <label><input type="radio" name="mode" value="exam"><span>試験想定<small>開始後はタイマーだけ</small></span></label>
+        <label><input type="radio" name="mode" value="study" checked><span>学習会仕様<small>場面を常に表示</small></span></label>
+        <label><input type="radio" name="mode" value="exam"><span>試験仕様<small>開始後はタイマーだけ</small></span></label>
       </div>
     </fieldset>
 
@@ -530,32 +534,39 @@
     </div>
 
     <div class="field" id="field-post">
-      <label class="label" for="scenario-select">課題文</label>
-      <select id="scenario-select" class="select-box"></select>
-      <div class="row" style="margin-top:10px">
-        <label class="btn-file">PowerPointを読み込む<input type="file" id="pptx-file" accept=".pptx,application/vnd.openxmlformats-officedocument.presentationml.presentation"></label>
-        <button type="button" class="btn-sub is-quiet" id="pptx-clear" hidden>読み込みを消す</button>
+      <div class="label" id="src-label">課題文</div>
+      <div class="seg" id="seg-src" style="--n:3" role="radiogroup" aria-labelledby="src-label">
+        <label><input type="radio" name="src" value="pptx" checked><span>ファイル</span></label>
+        <label><input type="radio" name="src" value="manual"><span>手入力</span></label>
+        <label><input type="radio" name="src" value="none"><span>なし</span></label>
       </div>
-      <p class="help" id="import-status" role="status">学習会の前に、その回のPowerPointを読み込むと、その回のシナリオだけが選べます（電波は要りません）。</p>
-    </div>
 
-    <details class="manual" id="manual">
-      <summary>手入力で課題文をつくる</summary>
-      <div class="manual-body">
-        <div class="row" style="gap:10px;flex-wrap:nowrap">
-          <select id="man-select" class="select-box" aria-label="保存した課題文"></select>
-          <button type="button" class="btn-sub is-quiet" id="man-del" hidden>消す</button>
+      <div class="src-panel" id="src-pptx">
+        <select id="scenario-select" class="select-box" aria-label="シナリオ"></select>
+        <div class="row" style="margin-top:10px">
+          <label class="btn-file">ファイルから読み込む<input type="file" id="pptx-file" multiple accept=".pptx,.pdf,application/pdf,application/vnd.openxmlformats-officedocument.presentationml.presentation"></label>
+          <button type="button" class="btn-sub is-quiet" id="pptx-clear" hidden>読み込みを消す</button>
         </div>
-        <div>
-          <input type="text" id="m-situ" class="text-box" aria-label="状況" value="ここは初診外来です。">
-          <div class="chips" style="margin-top:6px">
-            <button type="button" data-fill="ここは初診外来です。">初診外来</button>
-            <button type="button" data-fill="ここは救急外来です。">救急外来</button>
-          </div>
-        </div>
-        <input type="text" id="m-patient" class="text-box" aria-label="患者" placeholder="患者 田中 花子 さん（36歳女性）">
+        <p class="help" id="import-status" role="status">学習会の前に、その回のPowerPoint（.pptx）かPDFを読み込むと、その回のシナリオだけが選べます。複数のファイルをまとめて選べます（電波は要りません）。</p>
       </div>
-    </details>
+
+      <div class="src-panel" id="src-manual" hidden>
+        <div class="manual-body">
+          <div class="row" style="gap:10px;flex-wrap:nowrap">
+            <select id="man-select" class="select-box" aria-label="保存した課題文"></select>
+            <button type="button" class="btn-sub is-quiet" id="man-del" hidden>消す</button>
+          </div>
+          <div>
+            <input type="text" id="m-situ" class="text-box" aria-label="状況" value="ここは初診外来です。">
+            <div class="chips" style="margin-top:8px">
+              <button type="button" data-fill="ここは初診外来です。">初診外来</button>
+              <button type="button" data-fill="ここは救急外来です。">救急外来</button>
+            </div>
+          </div>
+          <input type="text" id="m-patient" class="text-box" aria-label="患者" placeholder="患者 田中 花子 さん（36歳女性）">
+        </div>
+      </div>
+    </div>
 
     <button type="button" class="btn-next" id="go-timer">タイマー画面へ</button>
     <div class="setup-foot">
@@ -856,7 +867,7 @@
           node.classList.toggle('is-active', i === idx);
         });
         if (idx !== this.lastActive) {
-          // 場面が切り替わったら、学習会想定では該当ブロックが見える位置まで動かす
+          // 場面が切り替わったら、学習会仕様では該当ブロックが見える位置まで動かす
           if (this.lastActive !== -1 && state.mode === 'study' && this.status === 'running') {
             const node = document.querySelectorAll('.instruction-block')[idx];
             if (node && node.scrollIntoView) node.scrollIntoView({ behavior: 'smooth', block: 'center' });
@@ -1084,7 +1095,7 @@
       timer.lastActive = -1;
     }
 
-    // 横長の試験想定：課題文がスクロールなしで収まるように、文字の大きさを自動で合わせる
+    // 横長の試験仕様：課題文がスクロールなしで収まるように、文字の大きさを自動で合わせる
     const LANDSCAPE = '(orientation: landscape) and (min-width: 640px)';
     function fitTask() {
       const p = $('task-panel');
@@ -1108,7 +1119,7 @@
     }
     window.addEventListener('resize', fitTask);
 
-    // 試験想定：課題文を隅に小さく残し、タップで数秒だけ大きく見せる
+    // 試験仕様：課題文を隅に小さく残し、タップで数秒だけ大きく見せる
     const peek = {
       id: null,
       open() {
@@ -1236,6 +1247,89 @@
     };
 
     /* ==============================================================
+       PDFから課題文を読み取る（PowerPointをPDFに変換したもの）
+       - 文字の位置から段落を組み直し、PowerPointと同じ規則で課題文を見つけます
+       - 画像だけのPDF（スキャンなど）は文字がないため読み取れません
+       ============================================================== */
+    const pdfdoc = {
+      loadPromise: null,
+      load() {
+        if (window.pdfjsLib) return Promise.resolve();
+        if (!this.loadPromise) {
+          this.loadPromise = new Promise((resolve, reject) => {
+            const s = document.createElement('script');
+            s.src = 'pdf.min.js';
+            s.onload = () => { window.pdfjsLib.GlobalWorkerOptions.workerSrc = 'pdf.worker.min.js'; resolve(); };
+            s.onerror = () => { this.loadPromise = null; reject(new Error('PDF読み込み用の部品を開けませんでした（一度、電波のある所でアプリを開いてください）。')); };
+            document.head.appendChild(s);
+          });
+        }
+        return this.loadPromise;
+      },
+
+      // 1ページ分の文字を「行 → 段落」にまとめる
+      pageParas(items, height) {
+        const rows = [];
+        items.forEach((it) => {
+          const y = it.transform[5];
+          const row = rows.find((r) => Math.abs(r.y - y) < 2);
+          (row || (rows[rows.length] = { y, items: [] }, rows[rows.length - 1])).items.push(it);
+        });
+        const lines = rows.map((r) => {
+          r.items.sort((a, b) => a.transform[4] - b.transform[4]);
+          const text = r.items.map((i) => i.str).join('');
+          const h = Math.max(...r.items.map((i) => i.height || 0), 1);
+          return { y: r.y, h, text, bullet: /^\s*[•・●■◆]/.test(text) };
+        }).filter((l) => l.text.trim()).sort((a, b) => b.y - a.y);
+
+        const paras = [];
+        let prev = null;
+        lines.forEach((l) => {
+          const newPara = !prev || l.bullet || (prev.y - l.y) > l.h * 1.05;   // 行間が広い／箇条書きの記号 → 新しい段落
+          if (newPara) paras.push({ text: l.text, y: l.y, lines: 1 });
+          else {
+            const last = paras[paras.length - 1];
+            const glue = /[A-Za-z0-9]$/.test(last.text) && /^[A-Za-z0-9]/.test(l.text) ? ' ' : '';
+            last.text += glue + l.text; last.lines++;
+          }
+          prev = l;
+        });
+        return paras.map((p) => ({ text: pptx.clean(p.text), y: p.y, single: p.lines === 1, height })).filter((p) => p.text);
+      },
+
+      async parse(file) {
+        await this.load();
+        let doc;
+        try { doc = await window.pdfjsLib.getDocument({ data: new Uint8Array(await file.arrayBuffer()), verbosity: 0 }).promise; }
+        catch (e) { throw new Error('PDFとして読み込めませんでした。'); }
+        const pages = [];
+        for (let n = 1; n <= doc.numPages; n++) {
+          const page = await doc.getPage(n);
+          const height = page.getViewport({ scale: 1 }).height;
+          const tc = await page.getTextContent();
+          pages.push(this.pageParas(tc.items.filter((i) => typeof i.str === 'string'), height));
+        }
+        if (!pages.some((p) => p.length)) throw new Error('文字が見つかりませんでした（画像だけのPDFは読み取れません）。');
+
+        // ページの上端・下端に何度も出てくる一行（「学習会 2/18 胸痛」など）は、課題文ではないので除く
+        const key = (p) => pptx.norm(p.text).replace(/\s/g, '');
+        const seen = {};
+        pages.forEach((ps) => new Set(ps.filter((p) => p.single && (p.y > p.height * 0.9 || p.y < p.height * 0.07)).map(key)).forEach((k) => { seen[k] = (seen[k] || 0) + 1; }));
+        const body = pages.map((ps) => ps.filter((p) => !(p.single && (p.y > p.height * 0.9 || p.y < p.height * 0.07) && seen[key(p)] >= 2)));
+
+        const scenarios = [];
+        body.forEach((ps, i) => {
+          const shapes = [{ placeholder: false, isTitle: false, paras: ps.map((p) => p.text) }];
+          const next = (body[i + 1] || []).map((p) => p.text).find((t) => /シナリオ/.test(t)) || '';
+          const sc = pptx.parseTask(shapes, next, scenarios.length);
+          if (sc) scenarios.push(sc);
+        });
+        if (!scenarios.length) throw new Error('課題文のページ（「医療面接」「患者」を含むページ）が見つかりませんでした。');
+        return scenarios;
+      },
+    };
+
+    /* ==============================================================
        設定画面
        ============================================================== */
     const session = { scenarios: [], importedAt: null };
@@ -1306,16 +1400,22 @@
       const sel = $('man-select');
       sel.textContent = '';
       const add = (v, l) => { const o = document.createElement('option'); o.value = v; o.textContent = l; sel.appendChild(o); };
-      add('new', man.list.length ? '新しく入力する' : '手入力（保存したものはここに並びます）');
+      add('new', '新しく入力する');
       man.list.forEach((m, i) => add('m' + i, manLabel(m)));
       sel.value = Array.from(sel.options).some((o) => o.value === selected) ? selected : 'new';
       $('man-del').hidden = sel.value === 'new';
     }
     function manFill(m) {
       $('m-situ').value = m ? m.situ : 'ここは初診外来です。'; $('m-patient').value = m ? m.patient : '';
+      markChips();
     }
+    function markChips() {
+      document.querySelectorAll('.chips button').forEach((b) => b.classList.toggle('is-on', b.dataset.fill === $('m-situ').value.trim()));
+    }
+    const getSrc = () => document.querySelector('input[name="src"]:checked').value;
+    function setSrc(v) { const r = document.querySelector(`input[name="src"][value="${v}"]`); if (r) r.checked = true; }
     function manRemember() {
-      if ($('scenario-select').value !== 'manual') return;
+      if (getSrc() !== 'manual') return;
       const m = manFromFields();
       if (!m.patient) return;
       const i = man.list.findIndex((q) => manKey(q) === manKey(m));
@@ -1330,10 +1430,22 @@
       const sel = $('scenario-select');
       sel.textContent = '';
       const add = (value, label) => { const o = document.createElement('option'); o.value = value; o.textContent = label; sel.appendChild(o); };
-      add('none', '課題文なし（タイマーだけ）');
-      session.scenarios.forEach((s, i) => add('s' + i, scenarioLabel(s)));
-      add('manual', '手入力（下の欄）');
-      sel.value = Array.from(sel.options).some((o) => o.value === selected) ? selected : (session.scenarios.length ? 's0' : 'none');
+      if (!session.scenarios.length) add('none', '読み込んだシナリオはまだありません');
+      const sources = [...new Set(session.scenarios.map((s) => s.source || ''))];
+      if (sources.length > 1) {   // 複数のファイルを読み込んだときは、ファイルごとにまとめて表示
+        sources.forEach((src) => {
+          const g = document.createElement('optgroup'); g.label = src || 'ファイル';
+          session.scenarios.forEach((s, i) => {
+            if ((s.source || '') !== src) return;
+            const o = document.createElement('option'); o.value = 's' + i; o.textContent = scenarioLabel(s); g.appendChild(o);
+          });
+          sel.appendChild(g);
+        });
+      } else {
+        session.scenarios.forEach((s, i) => add('s' + i, scenarioLabel(s)));
+      }
+      sel.value = Array.from(sel.options).some((o) => o.value === selected) ? selected : sel.options[0].value;
+      sel.disabled = !session.scenarios.length;
     }
 
     function importStatus(text, kind) {
@@ -1346,9 +1458,10 @@
       $('pptx-clear').hidden = !session.scenarios.length;
       if (session.scenarios.length) {
         const d = new Date(session.importedAt);
-        importStatus(`✓ ${session.scenarios.length}件のシナリオを読み込み済み（${d.getMonth() + 1}/${d.getDate()} ${d.getHours()}:${pad2(d.getMinutes())}）。この端末に保存されています。`, 'ok');
+        const nf = new Set(session.scenarios.map((s) => s.source || '')).size;
+        importStatus(`✓ ${session.scenarios.length}件のシナリオを読み込み済み（${nf > 1 ? nf + 'ファイル・' : ''}${d.getMonth() + 1}/${d.getDate()} ${d.getHours()}:${pad2(d.getMinutes())}）。この端末に保存されています。`, 'ok');
       } else {
-        importStatus('学習会の前に、その回のPowerPointを読み込むと、その回のシナリオだけが選べます（電波は要りません）。', '');
+        importStatus('学習会の前に、その回のPowerPoint（.pptx）かPDFを読み込むと、その回のシナリオだけが選べます。複数のファイルをまとめて選べます（電波は要りません）。', '');
       }
     }
 
@@ -1357,6 +1470,10 @@
       const presetKey = document.querySelector('input[name="preset"]:checked').value;
       const v = $('scenario-select').value;
       const entry = document.querySelector('input[name="entry"]:checked').value;
+      // 課題文のもと：選んだ内容に応じて下の欄を切り替える
+      const src = getSrc();
+      $('src-pptx').hidden = src !== 'pptx';
+      $('src-manual').hidden = src !== 'manual';
       state.mode = mode;
       state.readSec = (mode === 'exam' && entry === 'room') ? READ_SEC : 0;
       $('field-entry').hidden = mode !== 'exam';
@@ -1364,13 +1481,12 @@
       const isPre = presetKey === 'precc10';
       $('field-pre').hidden = !isPre;
       $('field-post').hidden = isPre;
-      $('manual').hidden = isPre;
       state.scenario = isPre ? preScenario()
-                    : v === 'manual' ? manualScenario()
-                    : /^s\d+$/.test(v) ? session.scenarios[Number(v.slice(1))] || null
+                    : src === 'manual' ? manualScenario()
+                    : src === 'pptx' && /^s\d+$/.test(v) ? session.scenarios[Number(v.slice(1))] || null
                     : null;
       document.body.dataset.mode = mode;
-      store.set('osce.prefs', { preset: presetKey, mode, entry, scenario: v });
+      store.set('osce.prefs', { preset: presetKey, mode, entry, scenario: v, src });
       store.set('osce.manual', { situ: $('m-situ').value, patient: $('m-patient').value });
     }
 
@@ -1465,6 +1581,8 @@
       if (prefs.mode) check('mode', prefs.mode);
       if (prefs.entry) check('entry', prefs.entry);
       buildScenarioOptions(prefs.scenario);
+      setSrc(prefs.src || (session.scenarios.length ? 'pptx' : 'manual'));
+      markChips();
       pre.list = (store.get('osce.pre', []) || []).filter((p) => p && (p.last || p.first)).slice(0, PRE_MAX);
       buildPreOptions('new');
       man.list = (store.get('osce.manuals', []) || []).filter((m) => m && m.patient).slice(0, MAN_MAX);
@@ -1473,7 +1591,6 @@
         const v = $('man-select').value;
         manFill(/^m\d+$/.test(v) ? man.list[Number(v.slice(1))] : null);
         $('man-del').hidden = v === 'new';
-        $('scenario-select').value = 'manual';
       });
       ['m-situ', 'm-patient'].forEach((id) => $(id).addEventListener('input', () => { $('man-select').value = 'new'; $('man-del').hidden = true; }));
       $('man-del').addEventListener('click', () => {
@@ -1503,31 +1620,41 @@
         applySelection(); audio.load(state.preset); audio.unlock();
       }));
       document.querySelectorAll('input[name="mode"], input[name="entry"]').forEach((r) => r.addEventListener('change', applySelection));
-      $('manual').addEventListener('toggle', () => { if ($('manual').open) $('scenario-select').value = 'manual'; });
+      document.querySelectorAll('input[name="src"]').forEach((r) => r.addEventListener('change', applySelection));
+      $('scenario-select').addEventListener('change', applySelection);
       document.querySelectorAll('.chips button').forEach((b) => b.addEventListener('click', () => {
-        $('m-situ').value = b.dataset.fill; $('scenario-select').value = 'manual'; $('man-select').value = 'new'; $('man-del').hidden = true;
+        $('m-situ').value = b.dataset.fill; $('man-select').value = 'new'; $('man-del').hidden = true; markChips();
       }));
-      ['m-situ', 'm-patient'].forEach((id) => $(id).addEventListener('input', () => { $('scenario-select').value = 'manual'; }));
+      $('m-situ').addEventListener('input', markChips);
 
       $('pptx-file').addEventListener('change', async (e) => {
-        const file = e.target.files && e.target.files[0];
+        const files = Array.from(e.target.files || []).sort((a, b) => a.name.localeCompare(b.name, 'ja', { numeric: true }));
         e.target.value = '';
-        if (!file) return;
+        if (!files.length) return;
         importStatus('読み込み中…', '');
-        try {
-          session.scenarios = await pptx.parse(file);
-          session.importedAt = Date.now();
-          store.set('osce.session', session);
-          buildScenarioOptions('s0');
-          refreshImportStatus();
-        } catch (err) {
-          importStatus('読み込めませんでした：' + (err && err.message ? err.message : err), 'error');
+        const all = []; const failed = [];
+        for (const file of files) {
+          try {
+            const isPdf = /\.pdf$/i.test(file.name) || file.type === 'application/pdf';
+            const list = await (isPdf ? pdfdoc.parse(file) : pptx.parse(file));
+            const source = file.name.replace(/\.[^.]+$/, '');
+            list.forEach((s) => { s.source = source; all.push(s); });
+          } catch (err) {
+            failed.push(`${file.name}（${err && err.message ? err.message : err}）`);
+          }
         }
+        if (!all.length) { importStatus('読み込めませんでした：' + failed.join('、'), 'error'); return; }
+        session.scenarios = all;
+        session.importedAt = Date.now();
+        store.set('osce.session', session);
+        buildScenarioOptions('s0');
+        refreshImportStatus();
+        if (failed.length) importStatus(`${all.length}件を読み込みましたが、次のファイルは読み込めませんでした：${failed.join('、')}`, 'error');
       });
       $('pptx-clear').addEventListener('click', () => {
         session.scenarios = []; session.importedAt = null;
         store.remove('osce.session');
-        buildScenarioOptions('none');
+        buildScenarioOptions();
         refreshImportStatus();
       });
 
