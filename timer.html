@@ -409,6 +409,9 @@
       #timer-section { padding-top: calc(40px + env(safe-area-inset-top)); padding-right: env(safe-area-inset-right); }
       /* 状況・患者情報のカードを残すぶん、数字を少し下げて小さくする */
       body[data-mode="exam"][data-stage="run"] #task-mini.has-info { top: calc(10px + env(safe-area-inset-top)); left: calc(118px + env(safe-area-inset-left)); max-width: 440px; }
+      /* 「もう一度タップで戻る」で戻るボタンが伸びたら、カードを右へ避ける */
+      body[data-mode="exam"][data-stage="run"] #task-mini.has-info { transition: left 0.15s ease; }
+      body[data-mode="exam"][data-stage="run"]:has(#btn-back.is-armed) #task-mini.has-info { left: calc(204px + env(safe-area-inset-left)); max-width: min(440px, calc(100vw - 310px - env(safe-area-inset-left) - env(safe-area-inset-right))); }
       body[data-mode="exam"][data-stage="run"]:has(#task-mini.has-info) #awake-badge { left: auto; right: calc(14px + env(safe-area-inset-right)); transform: none; }
       body[data-mode="exam"][data-stage="run"]:has(#task-mini.has-info) #timer-section { padding-top: calc(84px + env(safe-area-inset-top)); }
       body[data-mode="exam"][data-stage="run"]:has(#task-mini.has-info) #timer-display { font-size: min(30vw, 42vh); }
